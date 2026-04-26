@@ -1,0 +1,13 @@
+Upstream repo: https://github.com/espressif/esp-idf.git
+Current rev: v6.0.1 (8c19b156084a0753687347cca1f5355782893533)
+
+To update from upstream:
+1. copy components/bt/host/bluedroid(excluding any subdirectory later copied to a different place) to lib/bluedroid/src
+2. copy Bluedroid include dirs(priv_include_dirs under CONFIG_BT_BLUEDROID_ENABLED in components/bt/CMakeLists.txt) to lib/bluedroid/include
+3. copy components/bt/common/btc/core/btc_alarm.c, btc_manage.c, and btc_task.c to lib/bluedroid/src/btc/core
+4. copy components/bt/common/btc/include/btc/btc_alarm.h, btc_manage.h, and btc_task.h to lib/bluedroid/include/btc
+5. copy components/bt/common/include to lib/bluedroid/include
+6. copy components/bt/host/bluedroid/api/include/api to lib/bluedroid/export
+7. copy components/bt/common/osi to lib/bluedroid/osi
+8. copy components/bt/host/bluedroid/external/sbc to lib/bluedroid/sbc
+9. adjust lib/bluedroid/SOURCES as required, checking components/bt/CMakeLists.txt

@@ -82,6 +82,7 @@ ifeq (,$(findstring checkwps,$(APP_TYPE)))
       ifeq (,$(findstring bootloader,$(APPSDIR)))
         include $(ROOTDIR)/lib/skin_parser/skin_parser.make
         include $(ROOTDIR)/lib/tlsf/libtlsf.make
+        include $(ROOTDIR)/lib/bluedroid/bluedroid.make
       endif
     endif
   endif
