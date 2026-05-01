@@ -11,7 +11,6 @@
 #include "osi/osi.h"
 #include "osi/allocator.h"
 #include "common/bt_trace.h"
-#include "esp_system.h"
 #include "bta/bta_api.h"
 #include "device/bdaddr.h"
 #include "btc/btc_config.h"

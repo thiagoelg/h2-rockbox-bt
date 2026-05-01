@@ -573,7 +573,7 @@ static void handle_rc_disconnect (tBTA_AV_RC_CLOSE *p_rc_close)
 
     if (btc_avrc_tg_init_p()) {
         esp_avrc_tg_cb_param_t param;
-        memset(&param, 0, sizeof(esp_avrc_ct_cb_param_t));
+        memset(&param, 0, sizeof(esp_avrc_tg_cb_param_t));
         param.conn_stat.connected = false;
         memcpy(param.conn_stat.remote_bda, btc_rc_cb.rc_addr, sizeof(esp_bd_addr_t));
         btc_avrc_tg_cb_to_app(ESP_AVRC_TG_CONNECTION_STATE_EVT, &param);

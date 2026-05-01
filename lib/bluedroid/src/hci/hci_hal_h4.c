@@ -40,7 +40,9 @@
 #include "l2c_int.h"
 #endif ///C2H_FLOW_CONTROL_INCLUDED == TRUE
 #include "stack/hcimsgs.h"
+#if (BT_HCI_LOG_INCLUDED == TRUE)
 #include "hci_log/bt_hci_log.h"
+#endif // (BT_HCI_LOG_INCLUDED == TRUE)
 
 #if CONFIG_BT_BLE_LOG_SPI_OUT_HCI_ENABLED
 #include "ble_log/ble_log_spi_out.h"

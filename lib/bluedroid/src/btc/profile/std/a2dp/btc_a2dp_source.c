@@ -14,9 +14,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
+#include <tick.h>
 #include "osi/allocator.h"
 #include "osi/alarm.h"
 #include "osi/thread.h"
@@ -389,15 +387,7 @@ void btc_a2dp_source_on_suspended(tBTA_AV_SUSPEND *p_av)
 
 static UINT64 time_now_us(void)
 {
-#if _POSIX_TIMERS
-    struct timespec ts_now;
-    clock_gettime(CLOCK_MONOTONIC, &ts_now);
-    return ((UINT64)ts_now.tv_sec * 1000000L) + ((UINT64)ts_now.tv_nsec / 1000);
-#else
-    struct timeval ts_now;
-    gettimeofday(&ts_now, NULL);
-    return ((UINT64)ts_now.tv_sec * 1000000L) + ((UINT64)ts_now.tv_usec);
-#endif
+    return ((UINT64) current_tick) * (1000000 / HZ); // TODO(skyevg): figure out if there's a better way to do this
 }
 
 static void log_tstamps_us(char *comment)

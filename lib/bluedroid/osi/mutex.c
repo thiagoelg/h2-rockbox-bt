@@ -28,41 +28,27 @@ static osi_mutex_t gl_mutex; /* Recursive Type */
  * @return a new mutex */
 int osi_mutex_new(osi_mutex_t *mutex)
 {
-    int xReturn = -1;
+    mutex_init(mutex);
 
-    *mutex = xSemaphoreCreateMutex();
-
-    if (*mutex != NULL) {
-        xReturn = 0;
-    }
-
-    return xReturn;
+    return 0;
 }
 
 /** Lock a mutex
  * @param mutex the mutex to lock */
 int osi_mutex_lock(osi_mutex_t *mutex, uint32_t timeout)
 {
-    int ret = 0;
+    (void) timeout;
+    
+    mutex_lock(mutex);
 
-    if (timeout == OSI_MUTEX_MAX_TIMEOUT) {
-        if (xSemaphoreTake(*mutex, portMAX_DELAY) != pdTRUE) {
-            ret = -1;
-        }
-    } else {
-        if (xSemaphoreTake(*mutex, timeout / portTICK_PERIOD_MS) != pdTRUE)  {
-            ret = -2;
-        }
-    }
-
-    return ret;
+    return 0;
 }
 
 /** Unlock a mutex
  * @param mutex the mutex to unlock */
 void osi_mutex_unlock(osi_mutex_t *mutex)
 {
-    xSemaphoreGive(*mutex);
+    mutex_unlock(mutex);
 }
 
 /** Delete a mutex
@@ -71,34 +57,26 @@ void osi_mutex_unlock(osi_mutex_t *mutex)
  */
 void osi_mutex_free(osi_mutex_t *mutex)
 {
-    if (mutex == NULL || *mutex == NULL) {
-        return;
-    }
-    vSemaphoreDelete(*mutex);
-    *mutex = NULL;
+    (void)mutex;
 }
 
 int osi_mutex_global_init(void)
 {
-    gl_mutex = xSemaphoreCreateRecursiveMutex();
-    if (gl_mutex == NULL) {
-        return -1;
-    }
+    mutex_init(&gl_mutex);
 
     return 0;
 }
 
 void osi_mutex_global_deinit(void)
 {
-    vSemaphoreDelete(gl_mutex);
 }
 
 void osi_mutex_global_lock(void)
 {
-    xSemaphoreTakeRecursive(gl_mutex, portMAX_DELAY);
+    mutex_lock(&gl_mutex);
 }
 
 void osi_mutex_global_unlock(void)
 {
-    xSemaphoreGiveRecursive(gl_mutex);
+    mutex_unlock(&gl_mutex);
 }

@@ -51,6 +51,11 @@ future_t *future_new_immediate(void *value)
         goto error;
     }
 
+    if (osi_sem_new(&ret->semaphore, 1, 1) != 0) {
+        OSI_TRACE_ERROR("%s unable to allocate memory for the semaphore.", __func__);
+        goto error;
+    }
+
     ret->result = value;
     ret->ready_can_be_called = false;
     return ret;
@@ -73,10 +78,7 @@ void *future_await(future_t *future)
 {
     assert(future != NULL);
 
-    // If the future is immediate, it will not have a semaphore
-    if (future->semaphore) {
-        osi_sem_take(&future->semaphore, OSI_SEM_MAX_TIMEOUT);
-    }
+    osi_sem_take(&future->semaphore, OSI_SEM_MAX_TIMEOUT);
 
     void *result = future->result;
     future_free(future);
@@ -89,9 +91,7 @@ void future_free(future_t *future)
         return;
     }
 
-    if (future->semaphore) {
-        osi_sem_free(&future->semaphore);
-    }
+    osi_sem_free(&future->semaphore);
 
     osi_free(future);
 }

@@ -10,7 +10,6 @@
 /* All the configuration from SDK defined here */
 #include "bt_common.h"
 #include "bt_user_config.h"
-#include "soc/soc_caps.h"
 
 /**********************************************************
  * Thread/Task reference

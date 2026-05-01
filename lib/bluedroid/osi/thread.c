@@ -16,39 +16,41 @@
  *
  ******************************************************************************/
 
+#include <stdint.h>
 #include <string.h>
 
 #include "osi/allocator.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
 #include "osi/semaphore.h"
 #include "osi/thread.h"
 #include "osi/mutex.h"
-
-struct work_item {
-    osi_thread_func_t func;
-    void *context;
-};
+#include "panic.h"
+#include "thread.h"
+#include "queue.h"
 
 struct work_queue {
-    QueueHandle_t queue;
+    struct event_queue queue;
     size_t capacity;
 };
 
 struct osi_thread {
-  TaskHandle_t thread_handle;           /*!< Store the thread object */
-  int  thread_id;                       /*!< May for some OS, such as Linux */
+  unsigned int thread_handle;           /*!< Store the thread object */
   bool stop;
   uint8_t work_queue_num;               /*!< Work queue number */
   struct work_queue **work_queues;      /*!< Point to queue array, and the priority inverse array index */
   osi_sem_t work_sem;
   osi_sem_t stop_sem;
+  void *stack;
 };
 
 struct osi_thread_start_arg {
   osi_thread_t *thread;
   osi_sem_t start_sem;
   int error;
+};
+
+struct work_item {
+    osi_thread_func_t func;
+    void *context;
 };
 
 struct osi_event {
@@ -61,10 +63,6 @@ struct osi_event {
 
 static const size_t DEFAULT_WORK_QUEUE_CAPACITY = 100;
 
-#if OSI_THREAD_DEBUG
-static void osi_thread_run_item(osi_thread_t *thread, int wq_idx, struct work_item *item);
-#endif
-
 static struct work_queue *osi_work_queue_create(size_t capacity)
 {
     if (capacity == 0) {
@@ -73,13 +71,9 @@ static struct work_queue *osi_work_queue_create(size_t capacity)
 
     struct work_queue *wq = (struct work_queue *)osi_malloc(sizeof(struct work_queue));
     if (wq != NULL) {
-        wq->queue = xQueueCreate(capacity, sizeof(struct work_item));
-        if (wq->queue != 0) {
-            wq->capacity = capacity;
-            return wq;
-        } else {
-            osi_free(wq);
-        }
+        queue_init(&wq->queue, false);
+        wq->capacity = capacity;
+        return wq;
     }
 
     return NULL;
@@ -88,68 +82,36 @@ static struct work_queue *osi_work_queue_create(size_t capacity)
 static void osi_work_queue_delete(struct work_queue *wq)
 {
     if (wq != NULL) {
-        if (wq->queue != 0) {
-            vQueueDelete(wq->queue);
-        }
-        wq->queue = 0;
+        queue_delete(&wq->queue);
         wq->capacity = 0;
         osi_free(wq);
     }
     return;
 }
 
-static bool osi_thead_work_queue_get(struct work_queue *wq, struct work_item *item)
+static bool osi_thead_work_queue_get(struct work_queue *wq, struct queue_event *item)
 {
     assert (wq != NULL);
-    assert (wq->queue != 0);
     assert (item != NULL);
 
-    if (pdTRUE == xQueueReceive(wq->queue, item, 0)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-static bool osi_thead_work_queue_put(struct work_queue *wq, const struct work_item *item, uint32_t timeout)
-{
-    assert (wq != NULL);
-    assert (wq->queue != 0);
-    assert (item != NULL);
-
-    bool ret = true;
-    if (timeout ==  OSI_SEM_MAX_TIMEOUT) {
-        if (xQueueSend(wq->queue, item, portMAX_DELAY) != pdTRUE) {
-            ret = false;
-        }
-    } else {
-        if (xQueueSend(wq->queue, item, timeout / portTICK_PERIOD_MS) != pdTRUE) {
-            ret = false;
-        }
-    }
-
-    return ret;
+    queue_wait_w_tmo(&wq->queue, item, 0);
+    return item->id != SYS_TIMEOUT;
 }
 
 static size_t osi_thead_work_queue_len(struct work_queue *wq)
 {
     assert (wq != NULL);
-    assert (wq->queue != 0);
     assert (wq->capacity != 0);
-
-    size_t available_spaces = (size_t)uxQueueSpacesAvailable(wq->queue);
-
-    if (available_spaces <= wq->capacity) {
-        return wq->capacity - available_spaces;
-    } else {
-        assert (0);
-    }
-    return 0;
+    return queue_count(&wq->queue);
 }
 
-static void osi_thread_run(void *arg)
+struct osi_thread_start_arg *hack_thread_start_arg;
+osi_mutex_t hack_thread_start_arg_mutex;
+bool hack_thread_start_arg_mutex_initialized = FALSE;
+
+static void osi_thread_run(void)
 {
-    struct osi_thread_start_arg *start = (struct osi_thread_start_arg *)arg;
+    struct osi_thread_start_arg *start = hack_thread_start_arg;
     osi_thread_t *thread = start->thread;
 
     osi_sem_give(&start->start_sem);
@@ -163,14 +125,12 @@ static void osi_thread_run(void *arg)
             break;
         }
 
-        struct work_item item;
+        struct queue_event item;
         while (!thread->stop && idx < thread->work_queue_num) {
-            if (osi_thead_work_queue_get(thread->work_queues[idx], &item) == true) {
-                #if OSI_THREAD_DEBUG
-                osi_thread_run_item(thread, idx, &item);
-                #else
-                item.func(item.context);
-                #endif
+            if (osi_thead_work_queue_get(thread->work_queues[idx], &item) == true && item.id == 1) {
+                struct work_item *work = (struct work_item *) item.data;
+                work->func(work->context);
+                osi_free(work);
                 idx = 0;
                 continue;
             } else {
@@ -179,10 +139,10 @@ static void osi_thread_run(void *arg)
         }
     }
 
-    thread->thread_handle = NULL;
+    thread->thread_handle = 0;
     osi_sem_give(&thread->stop_sem);
 
-    vTaskDelete(NULL);
+    thread_exit();
 }
 
 static int osi_thread_join(osi_thread_t *thread, uint32_t wait_ms)
@@ -204,9 +164,9 @@ static void osi_thread_stop(osi_thread_t *thread)
     //join
     ret = osi_thread_join(thread, 1000); //wait 1000ms
 
-    //if join failed, delete the task here
-    if (ret != 0 && thread->thread_handle) {
-        vTaskDelete(thread->thread_handle);
+    if (ret != 0) {
+        // this forcibly killed the thread originally, but we can't do that
+        thread_wait(thread->thread_handle);
     }
 }
 
@@ -216,6 +176,11 @@ osi_thread_t *osi_thread_create(const char *name, size_t stack_size, int priorit
     int ret;
     struct osi_thread_start_arg start_arg = {0};
 
+    if (!hack_thread_start_arg_mutex_initialized) {
+        osi_mutex_new(&hack_thread_start_arg_mutex);
+        hack_thread_start_arg_mutex_initialized = TRUE;
+    }
+
     if (stack_size <= 0 ||
             core < OSI_THREAD_CORE_0 || core > OSI_THREAD_CORE_AFFINITY ||
             work_queue_num <= 0 || work_queue_len == NULL) {
@@ -224,6 +189,11 @@ osi_thread_t *osi_thread_create(const char *name, size_t stack_size, int priorit
 
     osi_thread_t *thread = (osi_thread_t *)osi_calloc(sizeof(osi_thread_t));
     if (thread == NULL) {
+        goto _err;
+    }
+
+    thread->stack = osi_calloc(stack_size);
+    if (thread->stack == NULL) {
         goto _err;
     }
 
@@ -258,26 +228,22 @@ osi_thread_t *osi_thread_create(const char *name, size_t stack_size, int priorit
         goto _err;
     }
 
-    if (xTaskCreatePinnedToCore(osi_thread_run, name, stack_size, &start_arg, priority, &thread->thread_handle, core) != pdPASS) {
-        goto _err;
-    }
+    osi_mutex_lock(&hack_thread_start_arg_mutex, OSI_MUTEX_MAX_TIMEOUT);
+
+    hack_thread_start_arg = &start_arg;
+
+    thread->thread_handle = create_thread(osi_thread_run, thread->stack, stack_size, 0, name IF_PRIO(, priority) IF_COP(, core));
 
     osi_sem_take(&start_arg.start_sem, OSI_SEM_MAX_TIMEOUT);
     osi_sem_free(&start_arg.start_sem);
+
+    osi_mutex_unlock(&hack_thread_start_arg_mutex);
 
     return thread;
 
 _err:
 
     if (thread) {
-        if (start_arg.start_sem) {
-            osi_sem_free(&start_arg.start_sem);
-        }
-
-        if (thread->thread_handle) {
-            vTaskDelete(thread->thread_handle);
-        }
-
         for (int i = 0; i < thread->work_queue_num; i++) {
             if (thread->work_queues && thread->work_queues[i]) {
                 osi_work_queue_delete(thread->work_queues[i]);
@@ -290,12 +256,8 @@ _err:
             thread->work_queues = NULL;
         }
 
-        if (thread->work_sem) {
-            osi_sem_free(&thread->work_sem);
-        }
-
-        if (thread->stop_sem) {
-            osi_sem_free(&thread->stop_sem);
+        if (thread->stack) {
+            osi_free(thread->stack);
         }
 
         osi_free(thread);
@@ -323,14 +285,9 @@ void osi_thread_free(osi_thread_t *thread)
         thread->work_queues = NULL;
     }
 
-    if (thread->work_sem) {
-        osi_sem_free(&thread->work_sem);
+    if (thread->stack) {
+        osi_free(thread->stack);
     }
-
-    if (thread->stop_sem) {
-        osi_sem_free(&thread->stop_sem);
-    }
-
 
     osi_free(thread);
 }
@@ -344,14 +301,16 @@ bool osi_thread_post(osi_thread_t *thread, osi_thread_func_t func, void *context
         return false;
     }
 
-    struct work_item item;
+    struct work_item *work = osi_malloc(sizeof(struct work_item));
 
-    item.func = func;
-    item.context = context;
-
-    if (osi_thead_work_queue_put(thread->work_queues[queue_idx], &item, timeout) == false) {
+    if (work == NULL) {
         return false;
     }
+
+    work->func = func;
+    work->context = context;
+
+    queue_post(&thread->work_queues[queue_idx]->queue, 1, (intptr_t) work);
 
     osi_sem_give(&thread->work_sem);
 
@@ -362,15 +321,10 @@ bool osi_thread_set_priority(osi_thread_t *thread, int priority)
 {
     assert(thread != NULL);
 
-    vTaskPrioritySet(thread->thread_handle, priority);
+    #ifdef HAVE_PRIORITY_SCHEDULING
+    thread_set_priority(thread->thread_handle, priority);
+    #endif
     return true;
-}
-
-const char *osi_thread_name(osi_thread_t *thread)
-{
-    assert(thread != NULL);
-
-    return pcTaskGetName(thread->thread_handle);
 }
 
 int osi_thread_queue_wait_size(osi_thread_t *thread, int wq_idx)
@@ -459,45 +413,3 @@ bool osi_thread_post_event(struct osi_event *event, uint32_t timeout)
 
     return ret;
 }
-
-#if OSI_THREAD_DEBUG
-static void osi_thread_run_item(osi_thread_t *thread, int wq_idx, struct work_item *item)
-{
-    uint32_t pre_time;
-    uint32_t pre_msg_cnt;
-    uint32_t cur_time;
-    uint32_t cur_msg_cnt;
-
-    pre_time = esp_log_timestamp();
-    pre_msg_cnt = uxQueueMessagesWaiting(thread->work_queues[wq_idx]->queue);
-    item->func(item->context);
-    cur_time = esp_log_timestamp();
-    cur_msg_cnt = uxQueueMessagesWaiting(thread->work_queues[wq_idx]->queue);
-    if ((cur_time - pre_time) >= OSI_THREAD_BLOCK_TIME ||
-        (cur_msg_cnt > pre_msg_cnt && (cur_msg_cnt - pre_msg_cnt) >= OSI_THREAD_BLOCK_MSG)) {
-        OSI_TRACE_ERROR("%s was blocked while running item: %p exec_time=[%u %u] msg_inc=[%u %u]",
-            pcTaskGetName(thread->thread_handle), item->func, cur_time, pre_time, cur_msg_cnt, pre_msg_cnt);
-        assert(0);
-    }
-}
-
-void osi_thread_workqueue_dump(osi_thread_t *thread)
-{
-    int idx = 0;
-    struct work_item item;
-
-    vTaskSuspendAll();
-
-    while (idx < thread->work_queue_num) {
-        if (osi_thead_work_queue_get(thread->work_queues[idx], &item) == true) {
-            esp_rom_printf("[%u] %p %p\n", idx, item.func, item.context);
-            idx = 0;
-            continue;
-        } else {
-            idx++;
-        }
-    }
-
-    xTaskResumeAll();
-}
-#endif // OSI_THREAD_DEBUG

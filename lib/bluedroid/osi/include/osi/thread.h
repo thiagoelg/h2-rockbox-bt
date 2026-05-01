@@ -7,12 +7,7 @@
 #ifndef __THREAD_H__
 #define __THREAD_H__
 
-#include "freertos/FreeRTOSConfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
-#include "freertos/task.h"
 #include "osi/semaphore.h"
-#include "esp_task.h"
 #include "bt_common.h"
 
 #define OSI_THREAD_MAX_TIMEOUT OSI_SEM_MAX_TIMEOUT
@@ -65,12 +60,6 @@ bool osi_thread_post(osi_thread_t *thread, osi_thread_func_t func, void *context
  * return : if set successfully, return true, otherwise return false
  */
 bool osi_thread_set_priority(osi_thread_t *thread, int priority);
-
-/* brief: Get thread name
- * param thread: point of thread handler
- * return: constant point of thread name
- */
-const char *osi_thread_name(osi_thread_t *thread);
 
 /* brief: Get the size of the specified queue
  * param thread: point of thread handler

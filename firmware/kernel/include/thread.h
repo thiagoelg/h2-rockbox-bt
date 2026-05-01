@@ -51,6 +51,7 @@
 #define PRIORITY_REALTIME_3      3
 #define PRIORITY_REALTIME_4      4
 #define PRIORITY_REALTIME        4   /* Lowest realtime range */
+#define PRIORITY_BLUETOOTH       14  /* Bluetooth threads */
 #define PRIORITY_BUFFERING       15  /* Codec buffering thread */
 #define PRIORITY_USER_INTERFACE  16  /* For most UI thrads */
 #define PRIORITY_RECORDING       16  /* Recording thread */
@@ -75,7 +76,13 @@
 #define TARGET_EXTRA_THREADS 0
 #endif
 
-#define MAXTHREADS (BASETHREADS+TARGET_EXTRA_THREADS)
+#ifdef HAVE_BLUETOOTH
+#define BT_EXTRA_THREADS 5
+#else
+#define BT_EXTRA_THREADS 0
+#endif
+
+#define MAXTHREADS (BASETHREADS+TARGET_EXTRA_THREADS+BT_EXTRA_THREADS)
 
 BITARRAY_TYPE_DECLARE(threadbit_t, threadbit, MAXTHREADS)
 BITARRAY_TYPE_DECLARE(priobit_t, priobit, NUM_PRIORITIES)

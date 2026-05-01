@@ -43,7 +43,7 @@
 
 #define HCI_HOST_TASK_PINNED_TO_CORE    (TASK_PINNED_TO_CORE)
 #define HCI_HOST_TASK_STACK_SIZE        (2048 + BT_TASK_EXTRA_STACK_SIZE)
-#define HCI_HOST_TASK_PRIO              (BT_TASK_MAX_PRIORITIES - 3)
+#define HCI_HOST_TASK_PRIO              PRIORITY_BLUETOOTH // TODO(skyevg): think about priority more
 #define HCI_HOST_TASK_NAME              "hciT"
 #define HCI_HOST_TASK_WORKQUEUE_NUM     (2)
 #define HCI_HOST_TASK_WORKQUEUE0_LEN    (1) // for downstream datapath

@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <strlcpy.h>
 
 #include "common/bt_defs.h"
 #include "common/bt_trace.h"

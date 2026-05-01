@@ -11,3 +11,66 @@ To update from upstream:
 7. copy components/bt/common/osi to lib/bluedroid/osi
 8. copy components/bt/host/bluedroid/external/sbc to lib/bluedroid/sbc
 9. adjust lib/bluedroid/SOURCES as required, checking components/bt/CMakeLists.txt
+
+Changes from upstream:
+all listed below: added line in license header to comply with Apache-2.0 requirements -- TODO(skyevg): actually do this
+src/stack/btu/btu_init.c: changed BTU_TASK_PRIO define to use PRIORITY_REALTIME
+src/hci/hci_layer.c: changed HCI_HOST_TASK_PRIO define to use PRIORITY_REALTIME
+src/hci/hci_hal_h4.c: wrapped hci_log/bt_hci_log.h include in a BT_HCI_LOG_INCLUDED guard
+src/btc/profile/std/spp/btc_spp.c: moved all includes after the BTC_SPP_INCLUDED guard
+src/btc/profile/std/spp/btc_spp.c: added a common/bt_target.h include before the guard
+src/btc/profile/std/l2cap/btc_l2cap.c: moved all includes after the BTC_L2CAP_INCLUDED guard
+src/btc/profile/std/l2cap/btc_l2cap.c: added a common/bt_target.h include before the guard
+src/btc/profile/std/a2dp/btc_a2dp_source.c: changed time_now_us to use Rockbox tick.h, includes adjusted accordingly
+src/btc/profile/std/a2dp/bta_av_co.c: removed esp_attr.h include
+src/btc/profile/std/a2dp/bta_avrc.c: fixed typo in handle_rc_disconnect
+src/btc/core/btc_task.c: wrapped blufi includes in a BLUFI_INCLUDED guard
+src/btc/core/btc_task.c: changed BTC_TASK_PRIO define to use PRIORITY_REALTIME
+src/btc/core/btc_storage.c: removed esp_system.h include
+src/btc/core/btc_main.c: added BIT(i) define
+src/btc/core/btc_config.c: added strlcpy.h include
+src/bta/sys/bta_sys_conn.c: added string.h include
+src/bta/jv/bta_jv_act.c: moved all includes after the BTA_JV_INCLUDED guard
+src/bta/jv/bta_jv_act.c: added a common/bt_target.h include before the guard
+src/bta/gatt/bta_gattc_co.c: moved all includes after the GATTC_INCLUDED guard
+src/bta/gatt/bta_gattc_co.c: added a common/bt_target.h include before the guard
+src/api/esp_bt_main.c: wrapped hci_log/bt_hci_log.h include in a BT_HCI_LOG_INCLUDED guard
+src/api/esp_bluedroid_hci.c: wrapped hci_log/bt_hci_log.h include in a BT_HCI_LOG_INCLUDED guard
+include/common/bt_target.h: changed TIMER_PARAM_TYPE to uintptr_t for 64-bit platforms
+include/common/bt_trace.h: moved trc_dump_buffer inside BTTRC_DUMP_BUFFER guard
+include/common/bluedroid_user_config.h: removed soc/soc_caps.h include
+include/bta_dm_int.h: wrapped freertos/semphr.h include in a BTA_DYNAMIC_MEMORY guard
+include/bt_common.h: added stdint.h include
+include/bt_common.h: removed BT_TASK_MAX_PRIORITIES define
+export/esp_bluedroid_hci.h: added stdint.h include
+osi/alarm.c: significantly rewritten for Rockbox
+osi/allocator.c: significantly rewritten for Rockbox
+osi/config.c: significantly rewritten for Rockbox
+osi/fixed_pkt_queue.c: removed semaphore NULL checks
+osi/fixed_queue.c: removed semaphore NULL checks
+osi/future.c: changed future_new_immediate to init a semaphore with 1 max, 1 available
+osi/future.c: removed semaphore NULL checks
+osi/mutex.c: significantly rewritten for Rockbox
+osi/semaphore.c: significantly rewritten for Rockbox
+osi/thread.c: significantly rewritten for Rockbox
+osi/include/osi/alarm.h: defined osi_alarm_callback_t and osi_alarm_t inline
+osi/include/osi/allocator.h: significantly simplified for Rockbox
+osi/include/osi/config.h: changed define guard to __OSI_CONFIG_H__
+osi/include/osi/mutex.h: removed osi_mutex_valid/osi_mutex_set_invalid
+osi/include/osi/mutex.h: changed osi_mutex_t typedef to Rockbox mutex
+osi/include/osi/mutex.h: removed osi_mutex_valid/osi_mutex_set_invalid
+osi/include/osi/pkt_queue.h: changed sys/queue.h include to osi/sys_queue.h
+osi/include/osi/semaphore.h: changed osi_mutex_t typedef to Rockbox semaphore
+osi/include/osi/semaphore.h: removed osi_semaphore_valid/osi_semaphore_set_invalid
+osi/include/osi/thread.h: removed osi_thread_name
+osi/include/osi/thread.h: removed freertos and esp_task includes
+sbc/encoder/srce/sbc_analysis.c: added scratch space before s32X to work around OOB write reported by ASAN
+src/stack/avdt/avdt_ccb.c: changed UINT32 cast to uintptr_t for 64-bit platforms
+
+Added files:
+osi/include/sdkconfig.h: handwritten configuration file based on esp-idf/components/bt/host/bluedroid/Kconfig.in
+osi/include/esp_err.h: stripped down version of esp-idf/components/esp_common/include/esp_err.h
+osi/include/esp_log.h: stripped down version of esp-idf/components/log/include/esp_log.h
+osi/include/esp_random.h: stripped down version of esp-idf/components/esp_hw_support/include/esp_random.h
+osi/include/nvs.h: single define, required by src/btc/core/btc_config.c
+osi/include/osi/sys_queue.h: sys/queue.h from uClibc-ng 1.0.57

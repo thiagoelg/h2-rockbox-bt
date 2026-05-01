@@ -14,8 +14,10 @@
 #include "btc/btc_alarm.h"
 
 #include "btc/btc_manage.h"
+#if (BLUFI_INCLUDED == TRUE)
 #include "btc_blufi_prf.h"
 #include "blufi_int.h"
+#endif  ///BLUFI_INCLUDED == TRUE
 #ifdef CONFIG_BT_BLUEDROID_ENABLED
 #include "common/bt_target.h"
 #include "btc/btc_main.h"
@@ -96,7 +98,7 @@
 #define BTC_TASK_PINNED_TO_CORE         (TASK_PINNED_TO_CORE)
 #define BTC_TASK_STACK_SIZE             (BT_BTC_TASK_STACK_SIZE + BT_TASK_EXTRA_STACK_SIZE)	//by menuconfig
 #define BTC_TASK_NAME                   "BTC_TASK"
-#define BTC_TASK_PRIO                   (BT_TASK_MAX_PRIORITIES - 6)
+#define BTC_TASK_PRIO                   PRIORITY_BLUETOOTH // TODO(skyevg): think about priority more
 #define BTC_TASK_WORKQUEUE_NUM          (2)
 #define BTC_TASK_WORKQUEUE0_LEN         (0)
 #define BTC_TASK_WORKQUEUE1_LEN         (5)

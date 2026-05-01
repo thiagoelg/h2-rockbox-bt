@@ -22,6 +22,11 @@
  *
  ******************************************************************************/
 
+#include "common/bt_target.h"
+
+#if (defined BTA_JV_INCLUDED && BTA_JV_INCLUDED == TRUE)
+#if BTA_JV_L2CAP_INCLUDED
+
 #include <pthread.h>
 #include <stdlib.h>
 
@@ -46,9 +51,6 @@
 #include "stack/gap_api.h"
 #include "stack/l2c_api.h"
 
-
-#if (defined BTA_JV_INCLUDED && BTA_JV_INCLUDED == TRUE)
-#if BTA_JV_L2CAP_INCLUDED
 /* one of these exists for each client */
 struct fc_client {
     struct fc_client    *next_all_list;

@@ -22,7 +22,6 @@
  *  BTC.
  *
  ******************************************************************************/
-#include "esp_attr.h"
 #include "string.h"
 #include "common/bt_target.h"
 #include "stack/a2d_api.h"

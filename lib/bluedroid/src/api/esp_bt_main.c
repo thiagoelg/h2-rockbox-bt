@@ -15,7 +15,9 @@
 #include "osi/future.h"
 #include "osi/allocator.h"
 #include "config/stack_config.h"
+#if (BT_HCI_LOG_INCLUDED == TRUE)
 #include "hci_log/bt_hci_log.h"
+#endif // (BT_HCI_LOG_INCLUDED == TRUE)
 #include "bt_common.h"
 
 static esp_bluedroid_status_t s_bt_host_state = ESP_BLUEDROID_STATUS_UNINITIALIZED;

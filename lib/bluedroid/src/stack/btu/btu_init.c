@@ -46,7 +46,7 @@
 
 #define BTU_TASK_PINNED_TO_CORE         (TASK_PINNED_TO_CORE)
 #define BTU_TASK_STACK_SIZE             (BT_BTU_TASK_STACK_SIZE + BT_TASK_EXTRA_STACK_SIZE)
-#define BTU_TASK_PRIO                   (BT_TASK_MAX_PRIORITIES - 5)
+#define BTU_TASK_PRIO                   PRIORITY_BLUETOOTH // TODO(skyevg): think about priority more
 #define BTU_TASK_NAME                   "BTU_TASK"
 #define BTU_TASK_WORKQUEUE_NUM          (1)
 #define BTU_TASK_WORKQUEUE0_LEN         (0)

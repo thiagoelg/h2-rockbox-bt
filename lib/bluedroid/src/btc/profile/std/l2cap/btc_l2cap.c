@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "common/bt_target.h"
+
+#if (defined BTC_L2CAP_INCLUDED && BTC_L2CAP_INCLUDED == TRUE)
+
 #include <string.h>
 
 #include "btc_l2cap.h"
@@ -30,8 +34,6 @@
 
 #include "btc/btc_task.h"
 #include "stack/btu.h"
-
-#if (defined BTC_L2CAP_INCLUDED && BTC_L2CAP_INCLUDED == TRUE)
 
 #define SLOT_WRITE_BIT(i) (1UL << (i - 1))
 #define SLOT_CLOSE_BIT(i) (1UL << (i + BTA_JV_MAX_L2C_CONN - 1))

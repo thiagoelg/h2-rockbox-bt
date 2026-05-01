@@ -31,6 +31,8 @@
 #if (BT_BLE_LOG_SPI_OUT_HOST_ENABLED && !CLASSIC_BT_INCLUDED)
 #include "ble_log/ble_log_spi_out.h"
 #endif // (BT_BLE_LOG_SPI_OUT_HOST_ENABLED && !CLASSIC_BT_INCLUDED)
+
+#ifdef BTTRC_DUMP_BUFFER
 static inline void trc_dump_buffer(const char *prefix, uint8_t *data, uint16_t len)
 {
     uint16_t i;
@@ -51,7 +53,6 @@ static inline void trc_dump_buffer(const char *prefix, uint8_t *data, uint16_t l
     printf("\r\n");
 }
 
-#ifdef BTTRC_DUMP_BUFFER
 #define BTTRC_DUMP_BUFFER(_prefix, _data, _len) trc_dump_buffer(_prefix, _data, _len)
 #else
 #define BTTRC_DUMP_BUFFER(_prefix, _data, _len)

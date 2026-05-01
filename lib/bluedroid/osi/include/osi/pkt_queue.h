@@ -7,7 +7,7 @@
 #ifndef _PKT_LIST_H_
 #define _PKT_LIST_H_
 
-#include "sys/queue.h"
+#include "osi/sys_queue.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

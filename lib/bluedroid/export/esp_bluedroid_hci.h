@@ -8,6 +8,7 @@
 #define __ESP_BLUEDROID_HCI_H__
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "esp_err.h"
 
 #ifdef __cplusplus

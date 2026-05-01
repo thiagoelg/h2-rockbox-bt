@@ -161,8 +161,11 @@
 #endif
 #if BT_BLE_DYNAMIC_ENV_MEMORY == FALSE
 static SINT32   s32DCTY[16]  = {0};
-static SINT32   s32X[ENC_VX_BUFFER_SIZE / 2];
-static SINT16   *s16X = (SINT16 *) s32X;   /* s16X must be 32 bits aligned cf  SHIFTUP_X8_2*/
+// TODO(skyevg): according to ASAN, we do random writes to some addrs before s32X.
+// Figure out if that's true, and figure out why if it's true
+static SINT32   true_s32X[(ENC_VX_BUFFER_SIZE / 2) + 32];
+static SINT32   *s32X = true_s32X + 32;
+static SINT16   *s16X = (SINT16 *) (true_s32X + 32);   /* s16X must be 32 bits aligned cf  SHIFTUP_X8_2*/
 #else
 static SINT32   *s32DCTY;
 static SINT32   *s32X;

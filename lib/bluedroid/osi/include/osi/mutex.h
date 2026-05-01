@@ -19,18 +19,12 @@
 #ifndef __MUTEX_H__
 #define __MUTEX_H__
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
+#include <mutex.h>
 #include "osi/semaphore.h"
 
 #define OSI_MUTEX_MAX_TIMEOUT OSI_SEM_MAX_TIMEOUT
 
-#define osi_mutex_valid( x ) ( ( ( *x ) == NULL) ? pdFALSE : pdTRUE )
-#define osi_mutex_set_invalid( x ) ( ( *x ) = NULL )
-
-typedef SemaphoreHandle_t osi_mutex_t;
+typedef struct mutex osi_mutex_t;
 
 int osi_mutex_new(osi_mutex_t *mutex);
 

@@ -52,14 +52,8 @@ fixed_queue_t *fixed_queue_new(size_t capacity)
 
 
     osi_sem_new(&ret->enqueue_sem, capacity, capacity);
-    if (!ret->enqueue_sem) {
-        goto error;
-    }
 
     osi_sem_new(&ret->dequeue_sem, capacity, 0);
-    if (!ret->dequeue_sem) {
-        goto error;
-    }
 
     return ret;
 

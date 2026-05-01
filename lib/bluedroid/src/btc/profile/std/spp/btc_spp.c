@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "common/bt_target.h"
+
+#if (defined BTC_SPP_INCLUDED && BTC_SPP_INCLUDED == TRUE)
+
 #include <string.h>
 
 #include "btc_spp.h"
@@ -28,8 +32,6 @@
 
 #include "btc/btc_task.h"
 #include "stack/btu.h"
-
-#if (defined BTC_SPP_INCLUDED && BTC_SPP_INCLUDED == TRUE)
 
 #define SLOT_WRITE_BIT(i) (1UL << (i - 1))
 #define SLOT_CLOSE_BIT(i) (1UL << (i + MAX_RFC_PORTS - 1))

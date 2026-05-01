@@ -1607,7 +1607,7 @@
 
 
 #ifndef TIMER_PARAM_TYPE
-#define TIMER_PARAM_TYPE    UINT32
+#define TIMER_PARAM_TYPE    uintptr_t
 #endif
 
 /******************************************************************************

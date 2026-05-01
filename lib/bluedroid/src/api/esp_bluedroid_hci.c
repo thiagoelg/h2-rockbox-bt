@@ -12,7 +12,9 @@
 #if (BT_CONTROLLER_INCLUDED == TRUE)
 #include "esp_bt.h"
 #endif
+#if (BT_HCI_LOG_INCLUDED == TRUE)
 #include "hci_log/bt_hci_log.h"
+#endif
 
 #define LOG_TAG "HCI_API"
 

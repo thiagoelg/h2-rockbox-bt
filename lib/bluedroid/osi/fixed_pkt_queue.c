@@ -32,14 +32,8 @@ fixed_pkt_queue_t *fixed_pkt_queue_new(size_t capacity)
     }
 
     osi_sem_new(&ret->enqueue_sem, capacity, capacity);
-    if (!ret->enqueue_sem) {
-        goto error;
-    }
 
     osi_sem_new(&ret->dequeue_sem, capacity, 0);
-    if (!ret->dequeue_sem) {
-        goto error;
-    }
 
     return ret;
 
@@ -59,12 +53,8 @@ void fixed_pkt_queue_free(fixed_pkt_queue_t *queue, fixed_pkt_queue_free_cb free
     pkt_queue_destroy(queue->pkt_list, (pkt_queue_free_cb)free_cb);
     queue->pkt_list = NULL;
 
-    if (queue->enqueue_sem) {
-        osi_sem_free(&queue->enqueue_sem);
-    }
-    if (queue->dequeue_sem) {
-        osi_sem_free(&queue->dequeue_sem);
-    }
+    osi_sem_free(&queue->enqueue_sem);
+    osi_sem_free(&queue->dequeue_sem);
     osi_free(queue);
 }
 

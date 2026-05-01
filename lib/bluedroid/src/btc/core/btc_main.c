@@ -16,6 +16,7 @@
 #include "bta_gattc_int.h"
 #include "bta_gatts_int.h"
 #include "bta_dm_int.h"
+#define BIT(i) (1 << (i))
 
 static future_t *main_future[BTC_MAIN_FUTURE_NUM];
 

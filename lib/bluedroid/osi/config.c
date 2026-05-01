@@ -5,9 +5,8 @@
  */
 
 #define LOG_TAG "bt_osi_config"
-#include "esp_system.h"
-#include "nvs_flash.h"
-#include "nvs.h"
+#include "file.h"
+#include "fcntl.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -16,13 +15,11 @@
 #include <string.h>
 
 #include "bt_common.h"
+#include "assert.h"
 #include "osi/allocator.h"
 #include "osi/config.h"
 #include "osi/list.h"
 
-#define CONFIG_FILE_MAX_SIZE             (1536)//1.5k
-#define CONFIG_FILE_DEFAULE_LENGTH       (2048)
-#define CONFIG_KEY                       "bt_cfg_key"
 typedef struct {
     char *key;
     char *value;
@@ -40,7 +37,7 @@ struct config_t {
 // Empty definition; this type is aliased to list_node_t.
 struct config_section_iter_t {};
 
-static void config_parse(nvs_handle_t fp, config_t *config);
+static void config_parse(int fp, config_t *config);
 
 static section_t *section_new(const char *name);
 static void section_free(void *ptr);
@@ -80,22 +77,22 @@ config_t *config_new(const char *filename)
         return NULL;
     }
 
-    esp_err_t err;
-    nvs_handle_t fp;
-    err = nvs_open(filename, NVS_READWRITE, &fp);
-    if (err != ESP_OK) {
-        if (err == ESP_ERR_NVS_NOT_INITIALIZED) {
-            OSI_TRACE_ERROR("%s: NVS not initialized. "
-                      "Call nvs_flash_init before initializing bluetooth.", __func__);
-        } else {
-            OSI_TRACE_ERROR("%s unable to open NVS namespace '%s'\n", __func__, filename);
-        }
+    char actual_path[MAX_PATH];
+    if (filename[0] != '/') {
+        snprintf(actual_path, MAX_PATH, ROCKBOX_DIR "/%s", filename);
+    } else {
+        snprintf(actual_path, MAX_PATH, ROCKBOX_DIR "%s", filename);
+    }
+
+    int fp = open(actual_path, O_RDONLY);
+    if (fp < 0) {
+        OSI_TRACE_ERROR("%s unable to open file '%s'\n", __func__, filename);
         config_free(config);
         return NULL;
     }
 
     config_parse(fp, config);
-    nvs_close(fp);
+    close(fp);
     return config;
 }
 
@@ -355,49 +352,12 @@ static int get_config_size(const config_t *config)
     return total_size;
 }
 
-static int get_config_size_from_flash(nvs_handle_t fp)
+static int get_config_size_from_flash(int fp)
 {
     assert(fp != 0);
 
-    esp_err_t err;
-    const size_t keyname_bufsz = sizeof(CONFIG_KEY) + 5 + 1; // including log10(sizeof(i))
-    char *keyname = osi_calloc(keyname_bufsz);
-    if (!keyname){
-        OSI_TRACE_ERROR("%s, malloc error\n", __func__);
-        return 0;
-    }
-    size_t length = CONFIG_FILE_DEFAULE_LENGTH;
-    size_t total_length = 0;
-    uint16_t i = 0;
-    snprintf(keyname, keyname_bufsz, "%s%d", CONFIG_KEY, 0);
-    err = nvs_get_blob(fp, keyname, NULL, &length);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        osi_free(keyname);
-        return 0;
-    }
-    if (err != ESP_OK) {
-        OSI_TRACE_ERROR("%s, error %d\n", __func__, err);
-        osi_free(keyname);
-        return 0;
-    }
-    total_length += length;
-    while (length == CONFIG_FILE_MAX_SIZE) {
-        length = CONFIG_FILE_DEFAULE_LENGTH;
-        snprintf(keyname, keyname_bufsz, "%s%d", CONFIG_KEY, ++i);
-        err = nvs_get_blob(fp, keyname, NULL, &length);
-
-        if (err == ESP_ERR_NVS_NOT_FOUND) {
-            break;
-        }
-        if (err != ESP_OK) {
-            OSI_TRACE_ERROR("%s, error %d\n", __func__, err);
-            osi_free(keyname);
-            return 0;
-        }
-        total_length += length;
-    }
-    osi_free(keyname);
-    return total_length;
+    size_t length = filesize(fp);
+    return length;
 }
 
 bool config_save(const config_t *config, const char *filename)
@@ -406,25 +366,23 @@ bool config_save(const config_t *config, const char *filename)
     assert(filename != NULL);
     assert(*filename != '\0');
 
-    esp_err_t err;
     int err_code = 0;
-    nvs_handle_t fp;
     char *line = osi_calloc(1024);
-    const size_t keyname_bufsz = sizeof(CONFIG_KEY) + 5 + 1; // including log10(sizeof(i))
-    char *keyname = osi_calloc(keyname_bufsz);
     int config_size = get_config_size(config);
     char *buf = osi_calloc(config_size);
-    if (!line || !buf || !keyname) {
+    if (!line || !buf) {
         err_code |= 0x01;
         goto error;
     }
 
-    err = nvs_open(filename, NVS_READWRITE, &fp);
-    if (err != ESP_OK) {
-        if (err == ESP_ERR_NVS_NOT_INITIALIZED) {
-            OSI_TRACE_ERROR("%s: NVS not initialized. "
-                      "Call nvs_flash_init before initializing bluetooth.", __func__);
-        }
+    char actual_path[MAX_PATH];
+    if (filename[0] != '/') {
+        snprintf(actual_path, MAX_PATH, ROCKBOX_DIR "/%s", filename);
+    } else {
+        snprintf(actual_path, MAX_PATH, ROCKBOX_DIR "%s", filename);
+    }
+    int fp = open(actual_path, O_WRONLY | O_TRUNC | O_CREAT, 0666);
+    if (fp < 0) {
         err_code |= 0x02;
         goto error;
     }
@@ -475,46 +433,16 @@ bool config_save(const config_t *config, const char *filename)
         }
     }
     buf[w_cnt_total] = '\0';
-    if (w_cnt_total < CONFIG_FILE_MAX_SIZE) {
-        snprintf(keyname, keyname_bufsz, "%s%d", CONFIG_KEY, 0);
-        err = nvs_set_blob(fp, keyname, buf, w_cnt_total);
-        if (err != ESP_OK) {
-            nvs_close(fp);
-            err_code |= 0x04;
-            goto error;
-        }
-    }else {
-        int count = (w_cnt_total / CONFIG_FILE_MAX_SIZE);
-        assert(count <= 0xFF);
-        for (uint8_t i = 0; i <= count; i++)
-        {
-            snprintf(keyname, keyname_bufsz, "%s%d", CONFIG_KEY, i);
-            if (i == count) {
-                err = nvs_set_blob(fp, keyname, buf + i*CONFIG_FILE_MAX_SIZE, w_cnt_total - i*CONFIG_FILE_MAX_SIZE);
-                OSI_TRACE_DEBUG("save keyname = %s, i = %d, %d\n", keyname, i, w_cnt_total - i*CONFIG_FILE_MAX_SIZE);
-            }else {
-                err = nvs_set_blob(fp, keyname, buf + i*CONFIG_FILE_MAX_SIZE, CONFIG_FILE_MAX_SIZE);
-                OSI_TRACE_DEBUG("save keyname = %s, i = %d, %d\n", keyname, i, CONFIG_FILE_MAX_SIZE);
-            }
-            if (err != ESP_OK) {
-                nvs_close(fp);
-                err_code |= 0x04;
-                goto error;
-            }
-        }
-    }
-
-    err = nvs_commit(fp);
-    if (err != ESP_OK) {
-        nvs_close(fp);
-        err_code |= 0x08;
+    // TODO(skyevg): can write() do a partial write in Rockbox?
+    if (write(fp, buf, w_cnt_total) != w_cnt_total) {
+        close(fp);
+        err_code |= 0x04;
         goto error;
     }
 
-    nvs_close(fp);
+    close(fp);
     osi_free(line);
     osi_free(buf);
-    osi_free(keyname);
     return true;
 
 error:
@@ -523,9 +451,6 @@ error:
     }
     if (line) {
         osi_free(line);
-    }
-    if (keyname) {
-        osi_free(keyname);
     }
     if (err_code) {
         OSI_TRACE_ERROR("%s, err_code: 0x%x\n", __func__, err_code);
@@ -552,61 +477,36 @@ static char *trim(char *str)
     return str;
 }
 
-static void config_parse(nvs_handle_t fp, config_t *config)
+static void config_parse(int fp, config_t *config)
 {
     assert(fp != 0);
     assert(config != NULL);
 
-    esp_err_t err;
     int line_num = 0;
     int err_code = 0;
-    uint16_t i = 0;
-    size_t length = CONFIG_FILE_DEFAULE_LENGTH;
-    size_t total_length = 0;
     char *line = osi_calloc(1024);
     char *section = osi_calloc(1024);
-    const size_t keyname_bufsz = sizeof(CONFIG_KEY) + 5 + 1; // including log10(sizeof(i))
-    char *keyname = osi_calloc(keyname_bufsz);
     int buf_size = get_config_size_from_flash(fp);
     char *buf = NULL;
 
     if(buf_size == 0) { //First use nvs
         goto error;
     }
-    buf = osi_calloc(buf_size);
-    if (!line || !section || !buf || !keyname) {
+    buf = osi_calloc(buf_size + 1);
+    if (!line || !section || !buf) {
         err_code |= 0x01;
         goto error;
     }
-    snprintf(keyname, keyname_bufsz, "%s%d", CONFIG_KEY, 0);
-    err = nvs_get_blob(fp, keyname, buf, &length);
-    if (err == ESP_ERR_NVS_NOT_FOUND) {
-        goto error;
-    }
-    if (err != ESP_OK) {
+    // TODO(skyevg): can read() do a partial read in Rockbox?
+    if (read(fp, buf, buf_size) != buf_size) {
         err_code |= 0x02;
         goto error;
-    }
-    total_length += length;
-    while (length == CONFIG_FILE_MAX_SIZE) {
-        length = CONFIG_FILE_DEFAULE_LENGTH;
-        snprintf(keyname, keyname_bufsz, "%s%d", CONFIG_KEY, ++i);
-        err = nvs_get_blob(fp, keyname, buf + CONFIG_FILE_MAX_SIZE * i, &length);
-
-        if (err == ESP_ERR_NVS_NOT_FOUND) {
-            break;
-        }
-        if (err != ESP_OK) {
-            err_code |= 0x02;
-            goto error;
-        }
-        total_length += length;
     }
     char *p_line_end;
     char *p_line_bgn = buf;
     strcpy(section, CONFIG_DEFAULT_SECTION);
 
-    while ( (p_line_bgn < buf + total_length - 1) && (p_line_end = strchr(p_line_bgn, '\n'))) {
+    while ( (p_line_bgn < buf + buf_size - 1) && (p_line_end = strchr(p_line_bgn, '\n'))) {
 
         // get one line
         int line_len = p_line_end - p_line_bgn;
@@ -653,9 +553,6 @@ error:
     }
     if (section) {
         osi_free(section);
-    }
-    if (keyname) {
-        osi_free(keyname);
     }
     if (err_code) {
         OSI_TRACE_ERROR("%s returned with err code: %d\n", __func__, err_code);

@@ -19,17 +19,11 @@
 #ifndef __SEMAPHORE_H__
 #define __SEMAPHORE_H__
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
+#include <semaphore.h>
 
 #define OSI_SEM_MAX_TIMEOUT 0xffffffffUL
 
-typedef SemaphoreHandle_t osi_sem_t;
-
-#define osi_sem_valid( x ) ( ( ( *x ) == NULL) ? pdFALSE : pdTRUE )
-#define osi_sem_set_invalid( x ) ( ( *x ) = NULL )
+typedef struct semaphore osi_sem_t;
 
 int osi_sem_new(osi_sem_t *sem, uint32_t max_count, uint32_t init_count);
 
