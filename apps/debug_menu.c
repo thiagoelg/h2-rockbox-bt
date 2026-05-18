@@ -146,6 +146,10 @@
 #include <sys/sysinfo.h>
 #endif
 
+#if defined(HAVE_BLUETOOTH)
+#include "bluetooth/bluetooth.h"
+#endif
+
 #define SCREEN_MAX_CHARS (LCD_WIDTH / SYSFONT_WIDTH)
 
 static const char* threads_getname(int selected_item, void *data,
@@ -3060,6 +3064,10 @@ static const struct {
 #if defined(IPOD_6G) && !defined(SIMULATOR)
         {"View SysCfg", dbg_syscfg },
         {"Dump bootflash to file", dbg_bootflash_dump },
+#endif
+#ifdef HAVE_BLUETOOTH
+        { "Bluetooth test", bt_scan },
+        { "Bluetooth heap info", bt_heap_info },
 #endif
 };
 

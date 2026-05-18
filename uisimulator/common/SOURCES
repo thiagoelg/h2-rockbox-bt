@@ -7,6 +7,10 @@ backlight-sim.c
 powermgmt-sim.c
 filesystem-sim.c
 
+#ifdef HAVE_BLUETOOTH
+hci-sim.c
+#endif
+
 #ifdef WIN32
 time-win32.c
 #endif

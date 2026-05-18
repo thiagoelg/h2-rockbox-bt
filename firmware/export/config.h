@@ -1521,4 +1521,8 @@ Lyre prototype 1 */
 #define WANT_SWVOL_32
 #endif
 
+#ifdef HAVE_BLUETOOTH
+#define HAVE_MULTIMEDIA_KEYS
+#endif
+
 #endif /* __CONFIG_H__ */
