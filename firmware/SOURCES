@@ -1881,6 +1881,10 @@ target/mips/ingenic_x1000/erosqnative/lcd-erosqnative.c
 target/mips/ingenic_x1000/erosqnative/power-erosqnative.c
 target/mips/ingenic_x1000/sdmmc-x1000-common.c
 target/mips/ingenic/spl-nand-ingenic.c
+#ifndef BOOTLOADER
+target/mips/ingenic_x1000/erosqnative/hci-erosqnative.c
+target/mips/ingenic_x1000/erosqnative/BCM4343A1_001.002.009.0122.0538.c
+#endif /* BOOTLOADER */
 #endif /* EROS_QN */
 
 #if defined(SAMSUNG_YH820) || defined(SAMSUNG_YH920) || defined(SAMSUNG_YH925)
