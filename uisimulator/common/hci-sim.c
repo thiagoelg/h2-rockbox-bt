@@ -194,9 +194,11 @@ void bluetooth_hci_task(void)
     }
 }
 
-void bt_hci_enable(void)
+bool bt_hci_enable(void)
 {
     controller_fd = open("/dev/ttyACM0", O_RDWR | O_NOCTTY);
+    if (controller_fd < 0)
+        return false;
     struct termios termios;
     tcflush(controller_fd, TCIOFLUSH);
 	tcgetattr(controller_fd, &termios);
@@ -223,6 +225,7 @@ void bt_hci_enable(void)
     };
     esp_bluedroid_attach_hci_driver(&operations);
     create_thread(bluetooth_hci_task, hci_stack, (DEFAULT_STACK_SIZE + HCI_RECV_BUF_SIZE), 0, "bt_hci" IF_PRIO(, PRIORITY_BLUETOOTH));
+    return true;
 }
 
 void bt_hci_disable(void)
@@ -239,3 +242,13 @@ void *smp_clear_local_oob_data = NULL;
 void *smp_encrypt_data = NULL;
 void *smp_calculate_long_term_key_from_link_key = NULL;
 void *smp_save_secure_connections_long_term_key = NULL;
+
+bool bt_hci_sleep_clock(void)
+{
+    return false;
+}
+
+void bt_target_local_output(bool enable)
+{
+    (void)enable;
+}

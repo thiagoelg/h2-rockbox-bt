@@ -21,13 +21,23 @@
 #ifndef BT_HCI_H
 #define BT_HCI_H
 
-// Enables and registers the HCI driver for the target.
-// Can spawn up to one thread for this.
-void bt_hci_enable(void);
+#include <stdbool.h>
 
-// Disables the HCI driver for the target.
-// If bt_hci_enable spawned any threads, they must exit now.
-// Guaranteed to be called after Bluedroid deinit.
+/* Enables and registers the HCI driver for the target.
+ * Can spawn up to one thread for this.
+ * Returns false, leaving the controller off, if it can't be brought up. */
+bool bt_hci_enable(void);
+
+/* Whether the controller is fed an external sleep clock (debug info) */
+bool bt_hci_sleep_clock(void);
+
+/* Called as playback moves to (false) or away from (true) Bluetooth, so the
+ * target can power down its own output stage meanwhile */
+void bt_target_local_output(bool enable);
+
+/* Disables the HCI driver for the target.
+ * If bt_hci_enable spawned any threads, they must exit now.
+ * Guaranteed to be called after Bluedroid deinit. */
 void bt_hci_disable(void);
 
 #endif
