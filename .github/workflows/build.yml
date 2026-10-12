@@ -1,0 +1,130 @@
+# Builds Rockbox for the HiFi Walker H2 (erosqnative) with Bluetooth, and
+# publishes a GitHub release when a tag starting with "v" is pushed.
+name: Build
+
+on:
+  push:
+    branches: [h2-bt]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.variant }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # debug enables BT_DEBUG: logs to /bt_log.txt and /hci_log.pcap
+        variant: [release, debug]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set the toolchain location
+        run: echo "RBDEV_PREFIX=$HOME/rbdev" >> "$GITHUB_ENV"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bison flex texinfo zip \
+              automake autoconf libtool libtool-bin patch xz-utils bzip2
+
+      # Building the cross compiler takes a while, so keep it between runs.
+      # It only changes when the toolchain script does.
+      - name: Restore the MIPS toolchain
+        id: toolchain
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/rbdev
+          key: rbdev-mipsel-${{ runner.os }}-${{ hashFiles('tools/rockboxdev.sh', 'tools/toolchain-patches/**') }}
+
+      - name: Build the MIPS toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        env:
+          RBDEV_TARGET: i
+          RBDEV_DOWNLOAD: ${{ runner.temp }}/rbdev-dl
+          RBDEV_BUILD: ${{ runner.temp }}/rbdev-build
+        run: |
+          export MAKEFLAGS="-j$(nproc)"
+          cd tools
+          ./rockboxdev.sh
+
+      # Saved right away, even if the build below fails. Both variants may
+      # try at once; the second save fails harmlessly.
+      - name: Save the MIPS toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: ~/rbdev
+          key: ${{ steps.toolchain.outputs.cache-primary-key }}
+
+      - name: Enable Bluetooth debug logging
+        if: matrix.variant == 'debug'
+        run: |
+          sed -i 's|^/\* #define BT_DEBUG \*/|#define BT_DEBUG|' \
+              firmware/export/config/erosqnative.h
+          grep -q '^#define BT_DEBUG' firmware/export/config/erosqnative.h
+
+      # Generating the dependencies passes every source file's absolute path
+      # in one command, which gets too long for the kernel from the
+      # workspace's long path: build from a copy at a short one
+      - name: Build
+        run: |
+          export PATH="$RBDEV_PREFIX/bin:$PATH"
+          cp -a "$GITHUB_WORKSPACE" /tmp/rb
+          mkdir /tmp/rb/build
+          cd /tmp/rb/build
+          ../tools/configure --target=erosqnative --type=n
+          make -j"$(nproc)"
+          make zip
+          mkdir -p "$GITHUB_WORKSPACE/build"
+          mv rockbox.zip "$GITHUB_WORKSPACE/build/"
+
+      - name: Name the build
+        id: name
+        run: |
+          if [ "${{ github.ref_type }}" = tag ]; then
+              version="${{ github.ref_name }}"
+          else
+              version="$(git rev-parse --short=10 HEAD)"
+          fi
+          suffix=""
+          [ "${{ matrix.variant }}" = debug ] && suffix="-debug"
+          name="rockbox-h2-bt-${version}${suffix}.zip"
+          mv build/rockbox.zip "$name"
+          echo "file=$name" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rockbox-h2-bt-${{ matrix.variant }}
+          path: ${{ steps.name.outputs.file }}
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" dist/*.zip \
+              --repo "${{ github.repository }}" \
+              --title "${{ github.ref_name }}" \
+              --notes "Rockbox with Bluetooth for the HiFi Walker H2 (hardware revision 4), built from ${{ github.sha }}.
+
+          Extract \`rockbox-h2-bt-${{ github.ref_name }}.zip\` to the root of the SD card, replacing the existing \`.rockbox\` directory. The \`-debug\` build logs Bluetooth activity to \`/bt_log.txt\` and \`/hci_log.pcap\`; use it only to report problems. See the README for compatibility and installation."
