@@ -1,0 +1,30 @@
+The \dap{} can play audio through Bluetooth headphones and speakers, which can
+also control playback with their buttons. While a Bluetooth device is
+connected, audio plays through it instead of the \daps{} own outputs.
+
+\begin{description}
+  \item[Bluetooth.] Turns Bluetooth \setting{On} or \setting{Off}. When it is
+    on, the \dap{} reconnects to the most recently used device, and paired
+    devices can connect to the \dap{} by themselves. Turning Bluetooth off
+    saves battery.
+  \item[Devices.] Lists the paired devices, followed by the devices found by
+    searching for new ones, which starts when the list is opened. New devices
+    must be in pairing mode to be found. The first line shows the Bluetooth
+    status; select it to search again, or to turn Bluetooth on.
+
+    Select a device to connect to it, or to disconnect it if it is connected.
+    Press \ActionStdContext{} on a paired device to forget it.
+  \item[High Quality Audio.] When \setting{On}, and the device supports it,
+    uses the SBC codec's dual channel mode, which roughly doubles the bitrate.
+    Should playback stutter, turn this \setting{Off}.
+  \item[Sync Volume with Headphones.] When \setting{On}, and the device
+    supports it, the device applies the volume, and changing the volume on the
+    device changes it on the \dap{} too. When \setting{Off}, the \dap{} applies
+    the volume, independently of the device's own volume.
+\end{description}
+
+\opt{headphone_detection}{
+When a Bluetooth device disconnects, playback pauses as when unplugging
+headphones, following the \setting{Pause on Headphone Unplug} setting (see
+\reference{ref:PauseOnUnplug}).
+}
