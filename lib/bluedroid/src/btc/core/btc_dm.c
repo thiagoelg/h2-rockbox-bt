@@ -499,11 +499,8 @@ static void btc_dm_pin_req_evt(tBTA_DM_PIN_REQ *p_pin_req)
 #if (CLASSIC_BT_INCLUDED == TRUE)
 static void btc_dm_sp_cfm_req_evt(tBTA_DM_SP_CFM_REQ *p_cfm_req)
 {
-    if (p_cfm_req->just_works) {
-        // just work, not show to users.
-        BTA_DmConfirm(p_cfm_req->bd_addr, true);
-        return;
-    }
+    /* Just Works requests go to the app as well: a connectable device must
+     * not pair with anything that asks. It needn't show them to the user. */
 
     esp_bt_gap_cb_param_t param;
     bt_status_t ret;
