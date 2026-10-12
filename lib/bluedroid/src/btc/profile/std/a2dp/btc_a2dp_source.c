@@ -668,9 +668,21 @@ void btc_source_report_delay_value(UINT16 delay_value)
 /*****************************************************************************
  **  BTC ADAPTATION
  *****************************************************************************/
+/* Dual channel codes each channel on its own, so it takes about twice the
+ * rate for the same bitpool. Aim high: the bitrate is lowered until the
+ * bitpool fits what the sink allows ("SBC XQ", ~441 kbps at bitpool 37). */
+#ifndef BTC_SBC_DUAL_CHANNEL_BITRATE
+#define BTC_SBC_DUAL_CHANNEL_BITRATE 512
+#endif
+
 static UINT16 btc_a2dp_source_get_sbc_rate(void)
 {
     UINT16 rate = DEFAULT_SBC_BITRATE;
+
+    SBC_ENC_PARAMS *enc = &a2dp_source_local_param.btc_aa_src_cb.encoder;
+    if (enc->s16ChannelMode == SBC_DUAL) {
+        rate = BTC_SBC_DUAL_CHANNEL_BITRATE;
+    }
 
     /* restrict bitrate if a2dp link is non-edr */
     if (!btc_av_is_peer_edr()) {
