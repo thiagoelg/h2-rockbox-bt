@@ -8,7 +8,21 @@
 #define CONFIG_BT_SDP_PAD_LEN 300
 #define CONFIG_BT_SDP_ATTR_LEN 300
 #define CONFIG_BT_GOEPC_ENABLED TRUE
+#include "config.h"
+
+#ifdef BT_DEBUG
+/* Errors and warnings from every layer, plus API-level traces from the
+ * layers involved in setting up an A2DP connection. L2CAP stays at warnings:
+ * its API traces log every media packet. */
+#define CONFIG_BT_LOG_BTM_TRACE_LEVEL 3
+#define CONFIG_BT_LOG_SDP_TRACE_LEVEL 3
+#define CONFIG_BT_LOG_A2D_TRACE_LEVEL 3
+#define CONFIG_BT_LOG_AVDT_TRACE_LEVEL 3
+#define CONFIG_BT_LOG_APPL_TRACE_LEVEL 3
+#define CONFIG_BT_LOG_BTC_TRACE_LEVEL 3
+#else
 #define CONFIG_BT_STACK_NO_LOG TRUE // TODO(skyevg): actually wire up logs
+#endif
 /*
 #define CONFIG_BT_LOG_HCI_TRACE_LEVEL 2
 #define CONFIG_BT_LOG_BTM_TRACE_LEVEL 2
@@ -37,6 +51,11 @@
 #define CONFIG_BT_SMP_MAX_BONDS 15
 #define CONFIG_BT_MAX_DEVICE_NAME_LEN 32
 
+#ifdef BT_DEBUG
+/* Log formatting runs on the stack threads */
+#define BT_TASK_EXTRA_STACK_SIZE 2048
+#else
 #define BT_TASK_EXTRA_STACK_SIZE 512
+#endif
 
 #define CONFIG_BT_SMP_CRYPTO_STACK_NATIVE TRUE
