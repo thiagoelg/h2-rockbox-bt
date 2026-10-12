@@ -23,13 +23,19 @@
 #include "osi/semaphore.h"
 #include "osi/thread.h"
 #include "osi/mutex.h"
+#include "kernel.h"
 #include "panic.h"
 #include "thread.h"
-#include "queue.h"
 
+/* A bounded FIFO of work items. Rockbox event queues have a fixed 16 slots
+ * and overwrite when full, which ran items twice and freed them twice under
+ * load; posting here waits for room instead, like a FreeRTOS queue. */
 struct work_queue {
-    struct event_queue queue;
+    struct work_item **items;
     size_t capacity;
+    size_t head;                /* index of the oldest item */
+    size_t count;
+    struct semaphore space;     /* free slots */
 };
 
 struct osi_thread {
@@ -38,7 +44,6 @@ struct osi_thread {
   uint8_t work_queue_num;               /*!< Work queue number */
   struct work_queue **work_queues;      /*!< Point to queue array, and the priority inverse array index */
   osi_sem_t work_sem;
-  osi_sem_t stop_sem;
   void *stack;
 };
 
@@ -69,40 +74,77 @@ static struct work_queue *osi_work_queue_create(size_t capacity)
         return NULL;
     }
 
-    struct work_queue *wq = (struct work_queue *)osi_malloc(sizeof(struct work_queue));
-    if (wq != NULL) {
-        queue_init(&wq->queue, false);
-        wq->capacity = capacity;
-        return wq;
+    struct work_queue *wq = osi_calloc(sizeof(struct work_queue));
+    if (wq == NULL) {
+        return NULL;
     }
 
-    return NULL;
+    wq->items = osi_calloc(sizeof(struct work_item *) * capacity);
+    if (wq->items == NULL) {
+        osi_free(wq);
+        return NULL;
+    }
+
+    wq->capacity = capacity;
+    semaphore_init(&wq->space, capacity, capacity);
+    return wq;
+}
+
+static struct work_item *osi_thead_work_queue_get(struct work_queue *wq)
+{
+    struct work_item *item = NULL;
+
+    assert (wq != NULL);
+
+    int oldlevel = disable_irq_save();
+    if (wq->count > 0) {
+        item = wq->items[wq->head];
+        wq->head = (wq->head + 1) % wq->capacity;
+        wq->count--;
+    }
+    restore_irq(oldlevel);
+
+    if (item != NULL) {
+        semaphore_release(&wq->space);
+    }
+    return item;
+}
+
+/* timeout is in ticks */
+static bool osi_thead_work_queue_put(struct work_queue *wq,
+                                     struct work_item *item, int timeout)
+{
+    assert (wq != NULL);
+
+    if (semaphore_wait(&wq->space, timeout) != OBJ_WAIT_SUCCEEDED) {
+        return false;
+    }
+
+    int oldlevel = disable_irq_save();
+    wq->items[(wq->head + wq->count) % wq->capacity] = item;
+    wq->count++;
+    restore_irq(oldlevel);
+    return true;
 }
 
 static void osi_work_queue_delete(struct work_queue *wq)
 {
     if (wq != NULL) {
-        queue_delete(&wq->queue);
-        wq->capacity = 0;
+        struct work_item *item;
+        while ((item = osi_thead_work_queue_get(wq)) != NULL) {
+            osi_free(item);
+        }
+        osi_free(wq->items);
         osi_free(wq);
     }
     return;
-}
-
-static bool osi_thead_work_queue_get(struct work_queue *wq, struct queue_event *item)
-{
-    assert (wq != NULL);
-    assert (item != NULL);
-
-    queue_wait_w_tmo(&wq->queue, item, 0);
-    return item->id != SYS_TIMEOUT;
 }
 
 static size_t osi_thead_work_queue_len(struct work_queue *wq)
 {
     assert (wq != NULL);
     assert (wq->capacity != 0);
-    return queue_count(&wq->queue);
+    return wq->count;
 }
 
 struct osi_thread_start_arg *hack_thread_start_arg;
@@ -125,10 +167,10 @@ static void osi_thread_run(void)
             break;
         }
 
-        struct queue_event item;
         while (!thread->stop && idx < thread->work_queue_num) {
-            if (osi_thead_work_queue_get(thread->work_queues[idx], &item) == true && item.id == 1) {
-                struct work_item *work = (struct work_item *) item.data;
+            struct work_item *work =
+                osi_thead_work_queue_get(thread->work_queues[idx]);
+            if (work != NULL) {
                 work->func(work->context);
                 osi_free(work);
                 idx = 0;
@@ -139,34 +181,24 @@ static void osi_thread_run(void)
         }
     }
 
-    thread->thread_handle = 0;
-    osi_sem_give(&thread->stop_sem);
-
     thread_exit();
-}
-
-static int osi_thread_join(osi_thread_t *thread, uint32_t wait_ms)
-{
-    assert(thread != NULL);
-    return osi_sem_take(&thread->stop_sem, wait_ms);
 }
 
 static void osi_thread_stop(osi_thread_t *thread)
 {
-    int ret;
-
     assert(thread != NULL);
+
+    unsigned int handle = thread->thread_handle;
 
     //stop the thread
     thread->stop = true;
     osi_sem_give(&thread->work_sem);
 
-    //join
-    ret = osi_thread_join(thread, 1000); //wait 1000ms
-
-    if (ret != 0) {
-        // this forcibly killed the thread originally, but we can't do that
-        thread_wait(thread->thread_handle);
+    /* Join with thread_wait() rather than a semaphore the thread gives on
+     * its way out: the stack gets freed next, and the thread is still
+     * running on it until thread_exit() */
+    if (handle != 0) {
+        thread_wait(handle);
     }
 }
 
@@ -217,11 +249,6 @@ osi_thread_t *osi_thread_create(const char *name, size_t stack_size, int priorit
         goto _err;
     }
 
-    ret = osi_sem_new(&thread->stop_sem, 1, 0);
-    if (ret != 0) {
-        goto _err;
-    }
-
     start_arg.thread = thread;
     ret = osi_sem_new(&start_arg.start_sem, 1, 0);
     if (ret != 0) {
@@ -233,6 +260,12 @@ osi_thread_t *osi_thread_create(const char *name, size_t stack_size, int priorit
     hack_thread_start_arg = &start_arg;
 
     thread->thread_handle = create_thread(osi_thread_run, thread->stack, stack_size, 0, name IF_PRIO(, priority) IF_COP(, core));
+    if (thread->thread_handle == 0) {
+        /* Out of thread slots: the start semaphore would never be given */
+        osi_sem_free(&start_arg.start_sem);
+        osi_mutex_unlock(&hack_thread_start_arg_mutex);
+        goto _err;
+    }
 
     osi_sem_take(&start_arg.start_sem, OSI_SEM_MAX_TIMEOUT);
     osi_sem_free(&start_arg.start_sem);
@@ -310,7 +343,20 @@ bool osi_thread_post(osi_thread_t *thread, osi_thread_func_t func, void *context
     work->func = func;
     work->context = context;
 
-    queue_post(&thread->work_queues[queue_idx]->queue, 1, (intptr_t) work);
+    /* A thread can't wait for itself to make room */
+    int tmo;
+    if (thread_self() == thread->thread_handle) {
+        tmo = TIMEOUT_NOBLOCK;
+    } else if (timeout == OSI_THREAD_MAX_TIMEOUT) {
+        tmo = TIMEOUT_BLOCK;
+    } else {
+        tmo = (timeout * HZ + 999) / 1000;
+    }
+
+    if (!osi_thead_work_queue_put(thread->work_queues[queue_idx], work, tmo)) {
+        osi_free(work);
+        return false;
+    }
 
     osi_sem_give(&thread->work_sem);
 
