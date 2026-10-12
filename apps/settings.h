@@ -797,6 +797,11 @@ struct user_settings
 #ifdef HAVE_LINEOUT_POWEROFF
     bool lineout_active;
 #endif
+#ifdef HAVE_BLUETOOTH
+    bool bt_enabled;
+    bool bt_high_quality; /* SBC dual channel at the highest bitpool */
+    bool bt_volume_sync;  /* AVRCP absolute volume */
+#endif
 
 #ifdef HAVE_SPEAKER
     int speaker_mode; /* 0: off, 1: on, 2: auto (only if headphone detection) */

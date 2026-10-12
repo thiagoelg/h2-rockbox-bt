@@ -108,6 +108,12 @@
 #include "piezo.h"
 #endif
 
+#ifdef HAVE_BLUETOOTH
+#include "bluetooth/bluetooth.h"
+#include "pcm.h"
+#include "pcm_sink.h"
+#endif
+
 /* units used with output_dyn_value */
 const unsigned char * const byte_units[] =
 {
@@ -574,12 +580,26 @@ void car_adapter_mode_init(void)
 }
 #endif
 
+#if defined(HAVE_HEADPHONE_DETECTION) || \
+    (defined(HAVE_LINEOUT_DETECTION) && !defined(HAVE_LINEOUT_POWEROFF))
+/* Whether playback goes to the player's own outputs, and plugging them
+ * concerns it */
+static bool local_output_active(void)
+{
+#ifdef HAVE_BLUETOOTH
+    return pcm_current_sink() == PCM_SINK_BUILTIN;
+#else
+    return true;
+#endif
+}
+#endif
+
 #ifdef HAVE_HEADPHONE_DETECTION
 static void hp_unplug_change(bool inserted)
 {
     static bool headphone_caused_pause = true;
 
-    if (global_settings.unplug_mode)
+    if (global_settings.unplug_mode && local_output_active())
     {
         int audio_stat = audio_status();
         if (inserted)
@@ -620,7 +640,7 @@ static void lo_unplug_change(bool inserted)
 #endif
     static bool lineout_caused_pause = true;
 
-    if (global_settings.unplug_mode)
+    if (global_settings.unplug_mode && local_output_active())
     {
         int audio_stat = audio_status();
         if (inserted)
@@ -643,6 +663,36 @@ static void lo_unplug_change(bool inserted)
 #endif /*HAVE_LINEOUT_POWEROFF*/
 }
 #endif /*HAVE_LINEOUT_DETECTION*/
+
+#ifdef HAVE_BLUETOOTH
+/* Bluetooth audio devices follow the headphone unplug settings */
+static void bt_unplug_change(bool connected)
+{
+    static bool bluetooth_caused_pause = true;
+
+    if (global_settings.unplug_mode)
+    {
+        int audio_stat = audio_status();
+        if (connected)
+        {
+            if ((audio_stat & AUDIO_STATUS_PLAY) &&
+                    bluetooth_caused_pause &&
+                    global_settings.unplug_mode > 1 )
+                unpause_action(true);
+            bluetooth_caused_pause = false;
+        }
+        else
+        {
+            if ((audio_stat & AUDIO_STATUS_PLAY) &&
+                    !(audio_stat & AUDIO_STATUS_PAUSE))
+            {
+                bluetooth_caused_pause = true;
+                pause_action(false);
+            }
+        }
+    }
+}
+#endif /*HAVE_BLUETOOTH*/
 
 long default_event_handler_ex(long event, void (*callback)(void *), void *parameter)
 {
@@ -744,6 +794,20 @@ long default_event_handler_ex(long event, void (*callback)(void *), void *parame
         case SYS_LINEOUT_UNPLUGGED:
             lo_unplug_change(false);
             return SYS_LINEOUT_UNPLUGGED;
+#endif
+#ifdef HAVE_BLUETOOTH
+        case SYS_BLUETOOTH_CONNECTED:
+            bt_unplug_change(true);
+            return SYS_BLUETOOTH_CONNECTED;
+
+        case SYS_BLUETOOTH_DISCONNECTED:
+            bt_unplug_change(false);
+            return SYS_BLUETOOTH_DISCONNECTED;
+
+        case SYS_BLUETOOTH_VOLUME:
+            /* Changed on the headphones */
+            bluetooth_remote_volume_changed();
+            return SYS_BLUETOOTH_VOLUME;
 #endif
 #if CONFIG_PLATFORM & (PLATFORM_ANDROID)
         /* stop playback if we receive a call */

@@ -70,3 +70,10 @@ enum pcm_sink_ids {
 
 /* defined in each platform pcm source */
 extern struct pcm_sink builtin_pcm_sink;
+
+#ifdef HAVE_BLUETOOTH
+/* Volume for the Bluetooth sink in centibels, or PCM_MUTE_LEVEL. Either
+ * scales in software or is forwarded to the headphones (AVRCP absolute
+ * volume). Called by the target's audiohw_set_volume(). */
+void bt_sink_set_volume(int vol_l, int vol_r);
+#endif

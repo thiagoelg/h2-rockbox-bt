@@ -17231,3 +17231,258 @@
     touchscreen: "Touchscreen Flick Shortcuts"
   </voice>
 </phrase>
+<phrase>
+  id: LANG_BLUETOOTH
+  desc: in settings menu
+  user: core
+  <source>
+    *: none
+    bluetooth: "Bluetooth"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Bluetooth"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Bluetooth"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_DEVICES
+  desc: in bluetooth menu
+  user: core
+  <source>
+    *: none
+    bluetooth: "Devices"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Devices"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Devices"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_STARTING
+  desc: bluetooth status
+  user: core
+  <source>
+    *: none
+    bluetooth: "Starting..."
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Starting..."
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Starting..."
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_STOPPING
+  desc: bluetooth status
+  user: core
+  <source>
+    *: none
+    bluetooth: "Turning off..."
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Turning off..."
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Turning off..."
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_START_FAILED
+  desc: bluetooth status
+  user: core
+  <source>
+    *: none
+    bluetooth: "Failed to start"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Failed to start"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Failed to start"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_SEARCHING
+  desc: bluetooth status
+  user: core
+  <source>
+    *: none
+    bluetooth: "Searching..."
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Searching..."
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Searching..."
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_NOT_CONNECTED
+  desc: bluetooth status
+  user: core
+  <source>
+    *: none
+    bluetooth: "Not connected"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Not connected"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Not connected"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_CONNECTING
+  desc: bluetooth status, followed by a device name
+  user: core
+  <source>
+    *: none
+    bluetooth: "Connecting"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Connecting"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Connecting"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_CONNECTED
+  desc: bluetooth status, followed by a device name
+  user: core
+  <source>
+    *: none
+    bluetooth: "Connected"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Connected"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Connected"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_CONNECT_FAILED
+  desc: bluetooth status
+  user: core
+  <source>
+    *: none
+    bluetooth: "Couldn't connect"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Couldn't connect"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Couldn't connect"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_PAIRED
+  desc: bluetooth device list
+  user: core
+  <source>
+    *: none
+    bluetooth: "Paired"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Paired"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Paired"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_FORGET
+  desc: bluetooth device list, confirmation
+  user: core
+  <source>
+    *: none
+    bluetooth: "Forget this device?"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Forget this device?"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Forget this device?"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_HIGH_QUALITY
+  desc: in bluetooth menu
+  user: core
+  <source>
+    *: none
+    bluetooth: "High Quality Audio"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "High Quality Audio"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "High Quality Audio"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_VOLUME_SYNC
+  desc: in bluetooth menu
+  user: core
+  <source>
+    *: none
+    bluetooth: "Sync Volume with Headphones"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Sync Volume with Headphones"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Sync Volume with Headphones"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_BLUETOOTH_OFF_HINT
+  desc: bluetooth status, when off
+  user: core
+  <source>
+    *: none
+    bluetooth: "Off, select to turn on"
+  </source>
+  <dest>
+    *: none
+    bluetooth: "Off, select to turn on"
+  </dest>
+  <voice>
+    *: none
+    bluetooth: "Off, select to turn on"
+  </voice>
+</phrase>

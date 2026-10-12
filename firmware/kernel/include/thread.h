@@ -77,7 +77,9 @@
 #endif
 
 #ifdef HAVE_BLUETOOTH
-#define BT_EXTRA_THREADS 5
+/* Bluedroid's BTC, BTU, HCI host and alarm threads, the HCI receive thread
+ * and the Bluetooth manager */
+#define BT_EXTRA_THREADS 6
 #else
 #define BT_EXTRA_THREADS 0
 #endif

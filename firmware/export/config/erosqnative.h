@@ -46,6 +46,10 @@
 /* Bluetooth */
 #define HAVE_BLUETOOTH
 #define BT_HEAP_SIZE       0x40000 /* 256 KiB */
+/* Debug aids: an HCI capture in /hci_log.pcap (ACL data truncated) and a
+ * stack and event log in /bt_log.txt, keeping the previous ones as *.old.
+ * Writing them costs some battery and CPU while streaming. */
+/* #define BT_DEBUG */
 
 /* LCD defines */
 #define CONFIG_LCD   LCD_EROSQ

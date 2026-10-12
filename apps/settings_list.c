@@ -76,6 +76,11 @@
 
 #include "voice_thread.h"
 
+#ifdef HAVE_BLUETOOTH
+#include "bluetooth/bluetooth.h"
+#define BT_SETTING_FLAGS (F_TEMPVAR|F_CB_ON_SELECT_ONLY|F_CB_ONLY_IF_CHANGED)
+#endif
+
 #if defined(DX50) || defined(DX90)
 #include "governor-ibasso.h"
 #endif
@@ -1443,6 +1448,18 @@ const struct settings_list settings[] = {
 #ifdef HAVE_LINEOUT_POWEROFF
     OFFON_SETTING(0, lineout_active, LANG_LINEOUT,
                   true, "lineout", lineout_set),
+#endif
+#ifdef HAVE_BLUETOOTH
+    /* These act on the connection, so only once the choice is confirmed */
+    BOOL_SETTING(BT_SETTING_FLAGS, bt_enabled, LANG_BLUETOOTH, false,
+                 "bluetooth", off_on, LANG_ON, LANG_OFF,
+                 bluetooth_set_enabled),
+    BOOL_SETTING(BT_SETTING_FLAGS, bt_high_quality,
+                 LANG_BLUETOOTH_HIGH_QUALITY, true, "bluetooth high quality",
+                 off_on, LANG_ON, LANG_OFF, bluetooth_quality_changed),
+    BOOL_SETTING(BT_SETTING_FLAGS, bt_volume_sync, LANG_BLUETOOTH_VOLUME_SYNC,
+                 true, "bluetooth volume sync", off_on, LANG_ON, LANG_OFF,
+                 bluetooth_volume_sync_changed),
 #endif
     /* tuner */
 #if CONFIG_TUNER

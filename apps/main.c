@@ -38,6 +38,9 @@
 #include "menu.h"
 #include "usb.h"
 #include "wifi.h"
+#ifdef HAVE_BLUETOOTH
+#include "bluetooth/bluetooth.h"
+#endif
 #include "powermgmt.h"
 #include "adc.h"
 #include "i2c.h"
@@ -791,6 +794,9 @@ static void init(void)
 
 #ifdef HAVE_WIFI
     wifi_init();
+#endif
+#ifdef HAVE_BLUETOOTH
+    bluetooth_init();
 #endif
 
     /* runtime database has to be initialized after audio_init() */

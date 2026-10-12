@@ -41,6 +41,9 @@ extern const struct menu_item_ex
 #ifdef AUDIOHW_HAVE_EQ
         audiohw_eq_tone_controls,   /* audiohw_eq_menu.c */
 #endif
+#ifdef HAVE_BLUETOOTH
+        bluetooth_menu,             /* bluetooth_menu.c */
+#endif
         radio_settings_menu,        /* radio_menu.c     */
         theme_menu;                 /* theme_menu.c     */
 

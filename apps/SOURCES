@@ -186,6 +186,7 @@ keymaps/keymap-touchscreen.c
 #endif
 #ifdef HAVE_BLUETOOTH
 bluetooth/bluetooth.c
+menus/bluetooth_menu.c
 #endif
 #if (CONFIG_KEYPAD == IRIVER_H100_PAD) \
     || (CONFIG_KEYPAD == IRIVER_H300_PAD)

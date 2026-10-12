@@ -203,6 +203,14 @@ void audiohw_set_volume(int vol_l, int vol_r)
     l = vol_l;
     r = vol_r;
 
+#ifdef HAVE_BLUETOOTH
+    /* Keep the Bluetooth sink's volume current even when the DAC handles
+     * volume for the builtin sink. Use the unclamped volume: the line-out
+     * limit doesn't apply over Bluetooth. */
+    bt_sink_set_volume(l <= PCM5102A_VOLUME_MIN ? PCM_MUTE_LEVEL : l,
+                       r <= PCM5102A_VOLUME_MIN ? PCM_MUTE_LEVEL : r);
+#endif
+
 #if (defined(HAVE_HEADPHONE_DETECTION) && defined(HAVE_LINEOUT_DETECTION))
     /* Due to the hardware's detection method, make the Line-Out
      * the default. The LO can only be detected if it is active
