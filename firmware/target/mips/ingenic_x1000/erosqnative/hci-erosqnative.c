@@ -5,7 +5,6 @@
  *   Jukebox    |    |   (  <_> )  \___|    < | \_\ (  <_> > <  <
  *   Firmware   |____|_  /\____/ \___  >__|_ \|___  /\____/__/\_ \
  *                     \/            \/     \/    \/            \/
- * $Id$
  *
  * Copyright (C) 2026 Skye Green
  *
@@ -24,7 +23,7 @@
 #include "devicedata.h"
 #include "esp_bluedroid_hci.h"
 #include "esp_bt_main.h"
-#include "gpio-x1000.h"
+#include "gpio-ingenic.h"
 #include "kernel.h"
 #include "panic.h"
 #include "thread.h"

@@ -356,7 +356,7 @@ static int get_config_size_from_flash(int fp)
 {
     assert(fp != 0);
 
-    size_t length = filesize(fp);
+    size_t length = ffilesize(fp);
     return length;
 }
 
