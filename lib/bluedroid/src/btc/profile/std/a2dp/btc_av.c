@@ -121,6 +121,50 @@ static btc_av_cb_t *btc_av_cb_ptr = NULL;
 #define btc_av_cb (*btc_av_cb_ptr)
 #endif ///A2D_DYNAMIC_MEMORY == FALSE
 
+/* A connect request that arrived before BTA registered A2DP */
+static BOOLEAN btc_av_pending_connect = FALSE;
+static btc_av_connect_req_t btc_av_pending_connect_req;
+
+/*******************************************************************************
+**
+** Function         btc_av_reset_stale_state
+**
+** Description      Called when the stack starts. A2DP defers its deinit until
+**                  its state machine is idle, so if the stack was shut down
+**                  before that, its state outlived it: btc_av_init() then
+**                  silently failed and esp_a2d_*_init() was refused.
+**
+*******************************************************************************/
+void btc_av_reset_stale_state(void)
+{
+#if A2D_DYNAMIC_MEMORY == FALSE
+    /* Only frees the state machine, without running any handlers */
+    if (btc_av_cb.sm_handle != NULL) {
+        btc_sm_shutdown(btc_av_cb.sm_handle);
+    }
+    memset(&btc_av_cb, 0, sizeof(btc_av_cb));
+#else
+    if (btc_av_cb_ptr != NULL) {
+        if (btc_av_cb.sm_handle != NULL) {
+            btc_sm_shutdown(btc_av_cb.sm_handle);
+        }
+        osi_free(btc_av_cb_ptr);
+        btc_av_cb_ptr = NULL;
+    }
+#endif
+    btc_av_pending_connect = FALSE;
+    g_a2dp_on_init = false;
+    g_a2dp_on_deinit = true;
+    g_a2dp_source_ongoing_deinit = false;
+    g_a2dp_sink_ongoing_deinit = false;
+
+#if BTC_AV_SRC_INCLUDED
+    btc_a2dp_source_reset_state();
+#endif
+    /* A connect still in flight would make every new one a "duplicate" */
+    btc_queue_release();
+}
+
 /* both interface and media task needs to be ready to alloc incoming request */
 #define CHECK_BTAV_INIT() do \
 { \
@@ -353,6 +397,11 @@ static BOOLEAN btc_av_state_idle_handler(btc_sm_event_t event, void *p_data)
 
     case BTA_AV_REGISTER_EVT:
         btc_av_cb.bta_handle = ((tBTA_AV *)p_data)->registr.hndl;
+        if (btc_av_pending_connect) {
+            btc_av_pending_connect = FALSE;
+            btc_sm_dispatch(btc_av_cb.sm_handle, BTC_AV_CONNECT_REQ_EVT,
+                            (char *)&btc_av_pending_connect_req);
+        }
         break;
     case BTA_AV_SEP_REG_EVT:
         param.a2d_sep_reg_stat.seid = ((tBTA_AV *)p_data)->sep_reg.seid;
@@ -364,6 +413,18 @@ static BOOLEAN btc_av_state_idle_handler(btc_sm_event_t event, void *p_data)
     case BTA_AV_PENDING_EVT:
     case BTC_AV_CONNECT_REQ_EVT: {
         if (event == BTC_AV_CONNECT_REQ_EVT) {
+            /* ESP_A2D_PROF_STATE_EVT reports A2DP initialized before BTA
+             * has registered it. BTA_AvOpen() without a handle never
+             * completes, leaving us in OPENING for good, so wait for
+             * BTA_AV_REGISTER_EVT. */
+            if (btc_av_cb.bta_handle == 0) {
+                BTC_TRACE_WARNING("%s: AV not registered yet, "
+                                  "deferring connect\n", __FUNCTION__);
+                memcpy(&btc_av_pending_connect_req, p_data,
+                       sizeof(btc_av_connect_req_t));
+                btc_av_pending_connect = TRUE;
+                break;
+            }
             memcpy(&btc_av_cb.peer_bda, &((btc_av_connect_req_t *)p_data)->target_bda,
                    sizeof(bt_bdaddr_t));
             if (g_av_with_rc) {
@@ -400,6 +461,8 @@ static BOOLEAN btc_av_state_idle_handler(btc_sm_event_t event, void *p_data)
 
     case BTC_AV_DISCONNECT_REQ_EVT:
         BTC_TRACE_WARNING("No Link At All.");
+        /* Also cancels a connect waiting for BTA_AV_REGISTER_EVT */
+        btc_av_pending_connect = FALSE;
         btc_report_connection_state(ESP_A2D_CONNECTION_STATE_DISCONNECTED, &((btc_av_disconn_req_t *)p_data)->target_bda, 0, 0);
         break;
 
@@ -1191,6 +1254,9 @@ static bt_status_t btc_av_init(int service_id)
 #endif
 
     if (btc_av_cb.sm_handle == NULL) {
+        /* Set again by BTA_AV_REGISTER_EVT, which connects wait for */
+        btc_av_cb.bta_handle = 0;
+        btc_av_pending_connect = FALSE;
         btc_av_cb.service_id = service_id;
         bool stat = false;
         if (service_id == BTA_A2DP_SOURCE_SERVICE_ID) {

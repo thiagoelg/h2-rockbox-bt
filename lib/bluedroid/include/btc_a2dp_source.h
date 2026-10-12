@@ -81,6 +81,17 @@ void btc_a2dp_source_shutdown(void);
 
 /*******************************************************************************
  **
+ ** Function         btc_a2dp_source_reset_state
+ **
+ ** Description      Forgets a module that was never shut down because the
+ **                  stack went away first, so that it can start up again.
+ **                  Whatever it still held is leaked.
+ **
+ *******************************************************************************/
+void btc_a2dp_source_reset_state(void);
+
+/*******************************************************************************
+ **
  ** Function         btc_a2dp_source_start_audio_req
  **
  ** Description      Request to start audio encoding task

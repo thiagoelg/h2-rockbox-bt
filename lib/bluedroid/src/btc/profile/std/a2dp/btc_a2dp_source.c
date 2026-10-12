@@ -266,6 +266,11 @@ static bool btc_a2dp_source_ctrl(uint32_t sig, void *param)
     return true;
 }
 
+void btc_a2dp_source_reset_state(void)
+{
+    btc_a2dp_source_state = BTC_A2DP_SOURCE_STATE_OFF;
+}
+
 bool btc_a2dp_source_startup(void)
 {
     if (btc_a2dp_source_state != BTC_A2DP_SOURCE_STATE_OFF) {

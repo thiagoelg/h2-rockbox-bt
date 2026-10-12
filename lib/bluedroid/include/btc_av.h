@@ -47,6 +47,10 @@ extern bool g_a2dp_source_ongoing_deinit;
 // global variable to indicate a2dp sink deinitialization is ongoing
 extern bool g_a2dp_sink_ongoing_deinit;
 
+/* Drops A2DP state left over from a stack that was shut down before its
+ * deferred deinit completed; called when the stack starts */
+void btc_av_reset_stale_state(void);
+
 /*******************************************************************************
 **  Type definitions for callback functions
 ********************************************************************************/

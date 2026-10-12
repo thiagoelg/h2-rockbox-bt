@@ -19,6 +19,9 @@
 #include "hci_log/bt_hci_log.h"
 #endif // (BT_HCI_LOG_INCLUDED == TRUE)
 #include "bt_common.h"
+#if BTC_AV_INCLUDED
+#include "btc_av.h"
+#endif
 
 static esp_bluedroid_status_t s_bt_host_state = ESP_BLUEDROID_STATUS_UNINITIALIZED;
 
@@ -167,6 +170,11 @@ esp_err_t esp_bluedroid_init_with_cfg(esp_bluedroid_config_t *cfg)
         LOG_ERROR("Bluedroid stack initialize fail, ret:%d", ret);
         return ESP_FAIL;
     }
+
+#if BTC_AV_INCLUDED
+    /* A freshly started stack can't have A2DP up */
+    btc_av_reset_stale_state();
+#endif
 
     /*
      * BTC Init
