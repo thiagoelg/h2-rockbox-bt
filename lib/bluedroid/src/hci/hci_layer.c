@@ -265,6 +265,17 @@ static void transmit_command(
     pkt_linked_item_t *linked_pkt = HCI_GET_CMD_LINKED_STRUCT(metadata);
 
     assert(command->layer_specific == HCI_CMD_BUF_TYPE_METADATA);
+
+    /* A profile finishing a deferred cleanup after the HCI layer was shut
+     * down (A2DP waits for its state machine to be idle) would enqueue on
+     * the freed command queue */
+    if (!hci_host_startup_flag) {
+        HCI_TRACE_WARNING("HCI down, dropping command opcode=0x%x\n",
+                          metadata->opcode);
+        osi_free(linked_pkt);
+        return;
+    }
+
     metadata->flags_vnd |= HCI_CMD_MSG_F_VND_QUEUED;
 
     // Store the command message type in the event field
@@ -305,6 +316,11 @@ static void transmit_downward(uint16_t type, void *data)
     if (type == MSG_STACK_TO_HC_HCI_CMD) {
         HCI_TRACE_ERROR("%s legacy transmit of command. Use transmit_command instead.\n", __func__);
         assert(0);
+    } else if (!hci_host_startup_flag) {
+        /* As in transmit_command(): the queue is gone after shutdown */
+        HCI_TRACE_WARNING("HCI down, dropping packet\n");
+        osi_free(data);
+        return;
     } else {
         fixed_queue_enqueue(hci_host_env.packet_queue, data, FIXED_QUEUE_MAX_TIMEOUT);
     }
