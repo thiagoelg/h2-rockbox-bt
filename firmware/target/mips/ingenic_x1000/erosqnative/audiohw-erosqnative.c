@@ -33,6 +33,9 @@
 #include "i2c-ingenic.h"
 #include "gpio-ingenic.h"
 #include "devicedata.h"
+#ifdef HAVE_BLUETOOTH
+#include "bt_hci.h"
+#endif
 
 /*
  * Earlier devices audio path appears to be:
@@ -148,6 +151,28 @@ void audiohw_postinit(void)
 {
 
 }
+
+#ifdef HAVE_BLUETOOTH
+/* Shut the headphone amp down while playing over Bluetooth, muting first
+ * and unmuting last like audiohw_close() and audiohw_init() */
+void bt_target_local_output(bool enable)
+{
+    static bool enabled = true;
+    if (enable == enabled)
+        return;
+    enabled = enable;
+
+    if (enable) {
+        gpio_set_level(GPIO_HPAMP_SHDN, 1);
+        mdelay(10);
+        gpio_set_level(GPIO_STEREOSW_MUTE, 0);
+    } else {
+        gpio_set_level(GPIO_STEREOSW_MUTE, 1);
+        mdelay(10);
+        gpio_set_level(GPIO_HPAMP_SHDN, 0);
+    }
+}
+#endif
 
 void audiohw_close(void)
 {
