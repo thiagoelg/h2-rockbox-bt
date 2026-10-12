@@ -458,18 +458,24 @@ void btc_a2dp_source_setup_codec(void)
                      media_feeding.cfg.pcm.bit_per_sample,
                      media_feeding.cfg.pcm.num_channel);
 
-    if (bta_av_co_audio_set_codec(&media_feeding, &status)) {
-        tBTC_MEDIA_INIT_AUDIO_FEEDING mfeed;
-
-        /* Init the encoding task */
-        btc_a2dp_source_encoder_init();
-
-        /* Build the media task configuration */
-        mfeed.feeding = media_feeding;
-        mfeed.feeding_mode = BTC_AV_FEEDING_ASYNCHRONOUS;
-        /* Send message to Media task to configure transcoding */
-        btc_a2dp_source_audio_feeding_init_req(&mfeed);
+    if (!bta_av_co_audio_set_codec(&media_feeding, &status)) {
+        /* Initialize the encoder with the current configuration anyway: the
+         * encoder update that follows when the stream starts would otherwise
+         * divide by zero in SBC_Encoder_Init() */
+        APPL_TRACE_ERROR("%s: set codec failed, status %d",
+                         __FUNCTION__, status);
     }
+
+    tBTC_MEDIA_INIT_AUDIO_FEEDING mfeed;
+
+    /* Init the encoding task */
+    btc_a2dp_source_encoder_init();
+
+    /* Build the media task configuration */
+    mfeed.feeding = media_feeding;
+    mfeed.feeding_mode = BTC_AV_FEEDING_ASYNCHRONOUS;
+    /* Send message to Media task to configure transcoding */
+    btc_a2dp_source_audio_feeding_init_req(&mfeed);
 
     osi_mutex_global_unlock();
 }
@@ -693,11 +699,28 @@ static void btc_a2dp_source_encoder_init(void)
 
     /* Retrieve the current SBC configuration (default if currently not used) */
     bta_av_co_audio_get_sbc_config(&sbc_config, &minmtu);
+
+    /* The tables only map single valid values; anything else would index
+     * past them or give 0 blocks, which SBC_Encoder_Init() divides by */
+    UINT8 blk_idx = sbc_config.block_len >> 5;
+    UINT8 ch_idx = sbc_config.ch_mode >> 1;
+    UINT8 sf_idx = sbc_config.samp_freq >> 5;
+    if (blk_idx >= 5 || codec_block_tbl[blk_idx] == 0 ||
+        ch_idx >= 5 || ch_idx == 3 || sf_idx >= 5 || sf_idx == 3) {
+        APPL_TRACE_ERROR("%s: invalid SBC config freq 0x%x ch 0x%x "
+                         "blocks 0x%x, using defaults", __FUNCTION__,
+                         sbc_config.samp_freq, sbc_config.ch_mode,
+                         sbc_config.block_len);
+        blk_idx = A2D_SBC_IE_BLOCKS_16 >> 5;
+        ch_idx = A2D_SBC_IE_CH_MD_JOINT >> 1;
+        sf_idx = A2D_SBC_IE_SAMP_FREQ_44 >> 5;
+    }
+
     msg.NumOfSubBands = (sbc_config.num_subbands == A2D_SBC_IE_SUBBAND_4) ? 4 : 8;
-    msg.NumOfBlocks = codec_block_tbl[sbc_config.block_len >> 5];
+    msg.NumOfBlocks = codec_block_tbl[blk_idx];
     msg.AllocationMethod = (sbc_config.alloc_mthd == A2D_SBC_IE_ALLOC_MD_L) ? SBC_LOUDNESS : SBC_SNR;
-    msg.ChannelMode = codec_mode_tbl[sbc_config.ch_mode >> 1];
-    msg.SamplingFreq = freq_block_tbl[sbc_config.samp_freq >> 5];
+    msg.ChannelMode = codec_mode_tbl[ch_idx];
+    msg.SamplingFreq = freq_block_tbl[sf_idx];
     msg.MtuSize = minmtu;
 
     APPL_TRACE_EVENT("msg.ChannelMode %x", msg.ChannelMode);
@@ -827,6 +850,13 @@ static void btc_a2dp_source_enc_update(BT_HDR *p_msg)
 
     APPL_TRACE_DEBUG("%s : minmtu %d, maxbp %d minbp %d", __FUNCTION__,
                      pUpdateAudio->MinMtuSize, pUpdateAudio->MaxBitPool, pUpdateAudio->MinBitPool);
+
+    /* SBC_Encoder_Init() below divides by these */
+    if (pstrEncParams->s16NumOfBlocks == 0 ||
+        pstrEncParams->s16NumOfSubBands == 0) {
+        APPL_TRACE_ERROR("%s: encoder not initialized", __FUNCTION__);
+        return;
+    }
 
     /* Only update the bitrate and MTU size while timer is running to make sure it has been initialized */
     //if (a2dp_source_local_param.btc_aa_src_cb.is_tx_timer)
