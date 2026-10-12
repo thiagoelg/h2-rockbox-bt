@@ -174,9 +174,12 @@ void uart_empty_rx(uart_port_t port) {
 void uart_tx(uart_port_t port, const uint8_t *buf, size_t len) {
     assert(buf != NULL);
     assert(len > 0);
+    /* The IRQ handler modifies UIER as well */
+    int oldlevel = disable_irq_save();
     tx_buf[port] = buf;
     tx_available[port] = len;
     jz_writef(UART_UIER(port), TDRIE(1));
+    restore_irq(oldlevel);
     semaphore_wait(&tx_done_sem[port], TIMEOUT_BLOCK);
     while (jz_readf(UART_ULSR(port), TEMP) == 0) {
         yield();
@@ -184,10 +187,24 @@ void uart_tx(uart_port_t port, const uint8_t *buf, size_t len) {
 }
 
 size_t uart_rx(uart_port_t port, uint8_t *buf, size_t len) {
+    return uart_rx_timeout(port, buf, len, TIMEOUT_BLOCK);
+}
+
+size_t uart_rx_timeout(uart_port_t port, uint8_t *buf, size_t len,
+                       int timeout) {
+    int oldlevel = disable_irq_save();
     rx_buf[port] = buf;
     rx_available[port] = len;
     jz_writef(UART_UIER(port), RTOIE(1), RDRIE(1));
-    semaphore_wait(&rx_done_sem[port], TIMEOUT_BLOCK);
+    restore_irq(oldlevel);
+    if (semaphore_wait(&rx_done_sem[port], timeout) == OBJ_WAIT_TIMEDOUT) {
+        /* Stop the IRQ handler from touching buf; if it completed the
+         * transfer just now, consume the release it made */
+        oldlevel = disable_irq_save();
+        jz_writef(UART_UIER(port), RDRIE(0), RLSIE(0), RTOIE(0));
+        restore_irq(oldlevel);
+        semaphore_wait(&rx_done_sem[port], TIMEOUT_NOBLOCK);
+    }
     size_t rem = rx_available[port];
     rx_available[port] = 0;
     return len - rem;
